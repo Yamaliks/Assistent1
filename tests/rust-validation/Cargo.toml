@@ -1,0 +1,11 @@
+[package]
+name = "assistent1-launch-validation-tests"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+path = "../../src-tauri/src/launch_validation.rs"
+
+[dependencies]
+url = "2"

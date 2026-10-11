@@ -1,0 +1,9 @@
+node_modules/
+dist/
+src-tauri/target/
+tests/rust-validation/target/
+src-tauri/gen/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
