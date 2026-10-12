@@ -24,11 +24,11 @@ if ([NativeWindow]::GetShellWindow() -eq [IntPtr]::Zero) {
   Write-Output '::warning::Native reopen smoke test skipped: runner has no interactive Windows shell. Run the manual tray checklist on Windows.'
   exit 0
 }
-$primary = Start-Process -FilePath (Resolve-Path $Exe) -PassThru
-# Retain the process handle before a short-lived GUI process can exit. PowerShell's
-# Start-Process otherwise may report a null ExitCode for a fast single-instance exit.
-$null = $primary.Handle
+$primary = $null
 try {
+  $primary = Start-Process -FilePath (Resolve-Path $Exe) -PassThru
+  # Retain handles so PowerShell can read fast GUI process exit codes reliably.
+  $null = $primary.Handle
   Wait-For { $primary.Refresh(); !$primary.HasExited -and $primary.MainWindowHandle -ne [IntPtr]::Zero } 'First launch did not show the main window'
   $handle = $primary.MainWindowHandle
   if (![NativeWindow]::IsWindowVisible($handle)) { throw 'First launch window is hidden' }
@@ -57,5 +57,5 @@ try {
   if ($env:GITHUB_STEP_SUMMARY) { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "Native reopen smoke failed: $detail" }
   throw
 } finally {
-  if (!$primary.HasExited) { Stop-Process -Id $primary.Id -Force }
+  if ($primary -and !$primary.HasExited) { Stop-Process -Id $primary.Id -Force }
 }
