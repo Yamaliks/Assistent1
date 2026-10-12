@@ -5,6 +5,7 @@ use tauri::{
 };
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 mod actions;
+mod applications;
 mod launch_validation;
 mod window_lifecycle;
 
@@ -150,7 +151,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             show_palette,
             show_main,
-            actions::execute_action
+            actions::execute_action,
+            applications::check_application_exe,
+            applications::pick_application_exe
         ])
         .run(tauri::generate_context!())
         .expect("Unable to start Assistent1");

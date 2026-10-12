@@ -24,6 +24,15 @@
 
 ## 3. Mode engine
 
+### 3А — настройка приложений (готово)
+
+- Страница «Приложения»: Steam, Discord, Telegram, VPN, Браузер; постоянные ID `steam`, `discord`, `telegram`, `vpn`, `browser`.
+- Ручной ввод и системный EXE-диалог Windows, проверка файла, сохранение в существующих настройках v2.
+- Браузер по умолчанию; старые настройки получают пять пустых записей без потери команд/режимов.
+- 3Б и выполнение режимов не реализованы; Windows CI/установщик для 3А не запускались.
+
+### Будущий движок (не реализован)
+
 - Sequential actions, per-action results, cancellation and history.
 - Skip already running programs according to user preferences; surface failures.
 - Implement process detection here; stage 2 launches individual commands without mode switching.

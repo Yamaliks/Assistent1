@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { Activity, ArrowRight, AudioLines, Check, ChevronRight, Command, Home, Keyboard, LayoutGrid, Mic, Monitor, Plus, Search, Settings2, ShieldCheck, SlidersHorizontal, Sparkles, X, type LucideIcon } from 'lucide-react';
 import type { Mode } from './domain/modes';
 import type { UserCommand } from './domain/commands';
+import { ApplicationsPage } from './pages/ApplicationsPage';
 import { CommandsPage, commandIcons, commandLabels } from './pages/CommandsPage';
 import { useCommandExecution } from './services/useCommandExecution';
 import { ModeCard, modeIcons } from './components/ModeCard';
@@ -11,9 +12,10 @@ import { routeCommand } from './services/commandRouter';
 import { planMode } from './services/modeEngine';
 import { desktop, hidePalette, showMain, showPalette } from './services/windows';
 
-type Page = 'home' | 'modes' | 'commands' | 'history' | 'voice' | 'settings';
+type Page = 'home' | 'modes' | 'applications' | 'commands' | 'history' | 'voice' | 'settings';
 const navigation: { id: Page; title: string; icon: LucideIcon }[] = [
   { id: 'home', title: 'Главная', icon: Home }, { id: 'modes', title: 'Режимы', icon: LayoutGrid },
+  { id: 'applications', title: 'Приложения', icon: Monitor },
   { id: 'commands', title: 'Команды', icon: Command }, { id: 'history', title: 'История', icon: Activity },
   { id: 'voice', title: 'Голос', icon: Mic }, { id: 'settings', title: 'Настройки', icon: Settings2 },
 ];
@@ -74,6 +76,7 @@ export function App() {
           <div className="home-bottom"><button className="shortcut-card" onClick={() => { void showPalette().catch(reportError); }}><Keyboard size={22} /><div><strong>Всегда под рукой</strong><p>{desktop ? "Откройте быструю панель из любого приложения" : "В браузере панель открывается только кнопкой"}</p></div><kbd>Ctrl + Alt + Space</kbd></button><div className="voice-summary"><Mic size={21} /><div><strong>Голос — следующий шаг</strong><p>Локальное распознавание ещё не подключено</p></div></div></div>
         </>}
         {page === 'modes' && <><PageHeading title="Режимы" description="Личное пространство для каждого сценария." /><div className="notice"><SlidersHorizontal size={18} />Пока доступны название и описание. Редактор действий появится на этапе 4.</div><div className="mode-grid">{settings.modes.map(mode => <ModeCard key={mode.id} mode={mode} onSelect={select} />)}<button className="add-mode" onClick={() => { const mode: Mode = { id: crypto.randomUUID(), name: 'Новый режим', description: 'Ваш собственный сценарий', phrase: '', icon: 'work', actions: [] }; if (update({ ...settings, modes: [...settings.modes, mode] })) setSelectedId(mode.id); }}><Plus size={24} /><strong>Новый режим</strong><span>Создать локальный черновик</span></button></div>{selected && <ModeEditor key={selected.id} mode={selected} onClose={() => setSelectedId(null)} onSave={mode => update({ ...settings, modes: settings.modes.map(item => item.id === mode.id ? mode : item) })} />}</>}
+        {page === 'applications' && <><PageHeading title="Приложения" description="Настройте приложения для будущих режимов." /><ApplicationsPage applications={settings.applications} onSave={applications => update({ ...settings, applications })} /></>}
         {page === 'commands' && <><PageHeading title="Команды" description="Приложения, сайты и папки — по вашему запросу." /><CommandsPage commands={settings.commands} modes={settings.modes} onSave={commands => update({ ...settings, commands })} onRun={command => { void execution.run(command); }} busy={execution.busy} /></>}
         {page === 'history' && <><PageHeading title="История" description="Здесь будут результаты выполнения команд." /><EmptyState icon={Activity} title="Пока без событий" text="История выполнения пока не записывается. Журнал появится вместе с движком режимов." /></>}
         {page === 'voice' && <><PageHeading title="Голос" description="Ассистент, который будет понимать вас без облака." /><section className="panel voice-panel"><span className="large-icon"><Mic size={30} /></span><span className="badge">В разработке · Этап 6</span><h2>Ваш голос останется на устройстве</h2><p>Планируется локальное распознавание русской речи, например Vosk.<br />Микрофон сейчас не используется.</p><button className="primary" disabled>Распознавание не подключено</button></section><div className="settings-grid"><InfoCard title="Язык" text="Русский · планируется" icon={AudioLines} /><InfoCard title="Фраза активации" text="Будет доступна на этапе 7" icon={Mic} /></div></>}

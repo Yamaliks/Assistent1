@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-check-application-exe"
+description = "Enables the check_application_exe command without any pre-configured scope."
+commands.allow = ["check_application_exe"]
+
+[[permission]]
+identifier = "deny-check-application-exe"
+description = "Denies the check_application_exe command without any pre-configured scope."
+commands.deny = ["check_application_exe"]
