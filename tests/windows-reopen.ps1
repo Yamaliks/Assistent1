@@ -3,13 +3,32 @@ $ErrorActionPreference = 'Stop'
 Add-Type @'
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 public static class NativeWindow {
+  public delegate bool EnumWindowsCallback(IntPtr h, IntPtr p);
+  [DllImport("user32.dll")] public static extern bool EnumWindows(EnumWindowsCallback callback, IntPtr p);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)] public static extern int GetWindowTextW(IntPtr h, StringBuilder text, int count);
   [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
   [DllImport("user32.dll")] public static extern IntPtr SendMessageW(IntPtr h, uint m, IntPtr w, IntPtr l);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
   [DllImport("user32.dll")] public static extern IntPtr GetShellWindow();
+  public static IntPtr FindVisibleWindow(uint pid, string title) {
+    IntPtr result = IntPtr.Zero;
+    EnumWindows((h, p) => {
+      uint owner;
+      GetWindowThreadProcessId(h, out owner);
+      if (owner == pid && IsWindowVisible(h)) {
+        var text = new StringBuilder(512);
+        GetWindowTextW(h, text, text.Capacity);
+        if (text.ToString() == title) { result = h; return false; }
+      }
+      return true;
+    }, IntPtr.Zero);
+    return result;
+  }
 }
 '@
 function Wait-For([scriptblock]$Condition, [string]$Failure) {
@@ -26,14 +45,18 @@ if ([NativeWindow]::GetShellWindow() -eq [IntPtr]::Zero) {
 }
 $primary = $null
 try {
+  $config = Get-Content (Join-Path $PSScriptRoot '../src-tauri/tauri.conf.json') -Raw | ConvertFrom-Json
+  $title = ($config.app.windows | Where-Object { $_.label -eq 'main' }).title
+  if (!$title) { throw 'Main window title is missing from Tauri configuration' }
   $start = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path $Exe).Path)
   $start.UseShellExecute = $false
   $start.RedirectStandardError = $true
   $primary = [System.Diagnostics.Process]::Start($start)
   $stderr = $primary.StandardError.ReadToEndAsync()
-  Wait-For { $primary.Refresh(); !$primary.HasExited -and $primary.MainWindowHandle -ne [IntPtr]::Zero } 'First launch did not show the main window'
-  $handle = $primary.MainWindowHandle
-  if ($primary.MainWindowTitle -ne 'Assistent1') { throw "Unexpected startup window: $($primary.MainWindowTitle)" }
+  # Process.MainWindowHandle can select single-instance's com.assistent1.desktop-siw.
+  # Find the actual visible top-level main window by its PID and configured title.
+  Wait-For { !$primary.HasExited -and [NativeWindow]::FindVisibleWindow($primary.Id, $title) -ne [IntPtr]::Zero } 'First launch did not show the configured main window'
+  $handle = [NativeWindow]::FindVisibleWindow($primary.Id, $title)
   if (![NativeWindow]::IsWindowVisible($handle)) { throw 'First launch window is hidden' }
   for ($round = 0; $round -lt 2; $round++) {
     if ($round -eq 1) { [void][NativeWindow]::ShowWindow($handle, 6) }
