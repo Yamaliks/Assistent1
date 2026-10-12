@@ -26,19 +26,22 @@ if ([NativeWindow]::GetShellWindow() -eq [IntPtr]::Zero) {
 }
 $primary = $null
 try {
-  $primary = Start-Process -FilePath (Resolve-Path $Exe) -PassThru
-  # Retain handles so PowerShell can read fast GUI process exit codes reliably.
-  $null = $primary.Handle
+  $start = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path $Exe).Path)
+  $start.UseShellExecute = $false
+  $start.RedirectStandardError = $true
+  $primary = [System.Diagnostics.Process]::Start($start)
+  $stderr = $primary.StandardError.ReadToEndAsync()
   Wait-For { $primary.Refresh(); !$primary.HasExited -and $primary.MainWindowHandle -ne [IntPtr]::Zero } 'First launch did not show the main window'
   $handle = $primary.MainWindowHandle
+  if ($primary.MainWindowTitle -ne 'Assistent1') { throw "Unexpected startup window: $($primary.MainWindowTitle)" }
   if (![NativeWindow]::IsWindowVisible($handle)) { throw 'First launch window is hidden' }
   for ($round = 0; $round -lt 2; $round++) {
     if ($round -eq 1) { [void][NativeWindow]::ShowWindow($handle, 6) }
     [void][NativeWindow]::SendMessageW($handle, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
     Wait-For { ![NativeWindow]::IsWindowVisible($handle) } 'Close did not hide the main window'
-    if (![NativeWindow]::IsWindow($handle) -or $primary.HasExited) { throw 'Close destroyed the window/process' }
-    $second = Start-Process -FilePath (Resolve-Path $Exe) -PassThru
-    $null = $second.Handle
+    if ($primary.HasExited) { throw "Close ended the process: $($stderr.GetAwaiter().GetResult())" }
+    if (![NativeWindow]::IsWindow($handle)) { throw "Close destroyed main HWND (process alive). Round: $round" }
+    $second = [System.Diagnostics.Process]::Start([System.Diagnostics.ProcessStartInfo]::new((Resolve-Path $Exe).Path))
     try {
       if (!$second.WaitForExit(30000)) { throw 'Second instance did not exit' }
       if ($null -eq $second.ExitCode) { throw 'Second instance exit status could not be read' }

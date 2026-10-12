@@ -128,6 +128,8 @@ pub fn run() {
             // Registration failure (for example, a shortcut conflict) is a startup error,
             // rather than silently advertising a nonworking global shortcut.
             app.global_shortcut().register("Ctrl+Alt+Space")?;
+            // Initially hidden while WebView/windows are constructed: never expose a HWND
+            // before Tauri attaches CloseRequested handlers. Always show it after setup.
             // Identical first-launch behavior in dev and release; no cfg(debug_assertions).
             show_main(app.handle().clone(), None)?;
             Ok(())

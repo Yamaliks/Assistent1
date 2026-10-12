@@ -14,7 +14,7 @@
       {
         "label": "main",
         "title": "Assistent1",
-        "visible": true,
+        "visible": false,
         "theme": "Dark",
         "url": "index.html",
         "width": 1180,
