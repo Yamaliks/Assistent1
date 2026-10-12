@@ -3,7 +3,8 @@
 Workflow `.github/workflows/windows-build.yml` собирает существующие этапы 1–2 на `windows-2022`
 для `x86_64-pc-windows-msvc`. Используется официальный `tauri-apps/tauri-action`, локальный CLI
 из npm lockfile, Rust stable, C++ tools и Windows SDK runner. Действия закреплены полными SHA.
-Зависимости устанавливаются по lockfiles; запускаются 11 TypeScript-тестов, 3 Rust-теста и rustfmt.
+Зависимости устанавливаются по lockfiles; запускаются 11 TypeScript-тестов, 6 Rust-тестов и rustfmt. Также проверяется Windows dev-конфигурация; после release-сборки выполняется
+нативный smoke-тест закрытия/повторного открытия окна при доступной интерактивной оболочке.
 Tauri выполняет существующую сборку TypeScript/Vite и создаёт NSIS `.exe`.
 GitHub Release не создаётся, основная ветка не изменяется автоматически.
 

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pick-application-exe"
+description = "Enables the pick_application_exe command without any pre-configured scope."
+commands.allow = ["pick_application_exe"]
+
+[[permission]]
+identifier = "deny-pick-application-exe"
+description = "Denies the pick_application_exe command without any pre-configured scope."
+commands.deny = ["pick_application_exe"]

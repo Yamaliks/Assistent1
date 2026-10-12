@@ -24,6 +24,24 @@
 
 ## 3. Mode engine
 
+### 3А — настройка приложений (готово)
+
+- Страница «Приложения»: Steam, Discord, Telegram, VPN, Браузер; постоянные ID `steam`, `discord`, `telegram`, `vpn`, `browser`.
+- Ручной ввод и системный EXE-диалог Windows, проверка файла, сохранение в существующих настройках v2.
+- Браузер по умолчанию; старые настройки получают пять пустых записей без потери команд/режимов.
+- Выполнение режимов не реализовано; Windows CI/установщик для 3А не запускались.
+
+### 3Б-Lite — конструктор действий (готово)
+
+- Добавление/удаление, активность, порядок и параметры действий в существующих режимах; сохранение без автозаполнения удалённых действий.
+- Четыре типа: общее приложение по ID, сайт, папка, сохранённая команда по ID.
+- EXE-диалог и ручной путь прямо в режиме используют менеджер 3А; новые приложения доступны в общем списке, браузер по умолчанию поддерживается.
+- При удалении используемой команды — предупреждение и удаление связанных действий.
+- Настройки v3 в прежнем хранилище; v1/v2 совместимы, старые inline EXE перенесены в общий менеджер без изменения исходных данных до сохранения.
+- Выполнение режимов, голос и системные сценарии не добавлены. Windows CI и установщик не запускались.
+
+### Будущий движок (не реализован)
+
 - Sequential actions, per-action results, cancellation and history.
 - Skip already running programs according to user preferences; surface failures.
 - Implement process detection here; stage 2 launches individual commands without mode switching.
@@ -35,7 +53,8 @@
 
 ## 5. Windows integration
 
-- Tray, optional autostart, volume control and investigation of supported night-light APIs.
+- Tray lifecycle shipped as a stage 2 bug fix (0.1.1): close-to-tray, restore, explicit exit and single-instance reopen.
+- Optional autostart, volume control and investigation of supported night-light APIs remain future work.
 - Document platform limits; no unsupported registry hacks presented as stable APIs.
 
 ## 6. Local Russian speech recognition

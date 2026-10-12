@@ -46,8 +46,11 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
-      - name: Test Rust path and URL validation
+      - name: Test Rust validation and window lifecycle
         run: cargo test --locked --manifest-path tests/rust-validation/Cargo.toml
+
+      - name: Check Windows dev configuration
+        run: cargo check --locked --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc
 
       # No release/tag inputs: build only, then upload an Actions artifact.
       # Tauri runs the existing beforeBuildCommand (TypeScript + Vite).
@@ -57,6 +60,10 @@ jobs:
           projectPath: .
           tauriScript: npm run tauri
           args: --target x86_64-pc-windows-msvc --bundles nsis --ci -- --locked
+
+      - name: Smoke test native release close and reopen
+        shell: pwsh
+        run: ./tests/windows-reopen.ps1 -Exe ./src-tauri/target/x86_64-pc-windows-msvc/release/assistent1.exe
 
       - name: Upload NSIS installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
