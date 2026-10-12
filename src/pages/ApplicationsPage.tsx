@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { FolderOpen, Monitor } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
-import { applicationDefinitions, type ApplicationConfig } from '../domain/applications';
+import { applicationName, type ApplicationConfig } from '../domain/applications';
 import { targetError } from '../domain/commands';
 import { desktop } from '../services/windows';
 
@@ -9,14 +9,14 @@ export function ApplicationsPage({ applications, onSave }: { applications: Appli
   return <>
     <p className="text-muted mb-6">Укажите установленные приложения. Пустой путь означает, что приложение не настроено.</p>
     {!desktop && <div className="notice">Выбор файла и проверка его существования доступны в Windows-приложении. Ручной ввод и сохранение доступны здесь.</div>}
-    {applicationDefinitions.map(({ id, name }) => {
-      const app = applications.find(item => item.id === id)!;
+    {applications.map(app => {
+      const { id } = app; const name = applicationName(app);
       return <ApplicationEditor key={`${id}:${app.path}:${app.useDefaultBrowser}`} app={app} name={name}
         onSave={next => onSave(applications.map(item => item.id === id ? next : item))} />;
     })}
   </>;
 }
-function ApplicationEditor({ app, name, onSave }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean }) {
+export function ApplicationEditor({ app, name, onSave }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean }) {
   const [path, setPath] = useState(app.path);
   const [useDefault, setUseDefault] = useState(app.useDefaultBrowser);
   const [message, setMessage] = useState('');
@@ -42,6 +42,7 @@ function ApplicationEditor({ app, name, onSave }: { app: ApplicationConfig; name
     finally { setBusy(false); }
   }
   return <section className="panel"><div className="flex items-center gap-3 mb-4"><Monitor size={20} className="text-accent" /><h2>{name}</h2></div>
+    <p className="text-muted text-sm mb-4">{app.useDefaultBrowser ? 'Браузер по умолчанию' : app.path || 'Не настроено'}</p>
     <form onSubmit={event => { void submit(event); }}>
       {app.id === 'browser' && <label className="flex items-center gap-3 mb-4"><input className="w-auto" type="checkbox" checked={useDefault} disabled={busy} onChange={e => { setUseDefault(e.target.checked); setMessage(''); }} />Использовать браузер по умолчанию</label>}
       <label className="text-muted text-sm" htmlFor={`app-${app.id}`}>Путь к EXE</label>

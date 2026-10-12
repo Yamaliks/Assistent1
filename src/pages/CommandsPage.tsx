@@ -39,7 +39,7 @@ export function CommandsPage({ commands, modes, onSave, onRun, busy }: {
         <button className="icon-button" aria-label={`Изменить ${command.name}`} onClick={() => edit(command)}><Pencil size={17} /></button>
         <button className="icon-button" aria-label={`Удалить ${command.name}`} onClick={() => { setRemoveId(command.id); setDraft(null); }}><Trash2 size={17} /></button>
       </div>; })}</div>
-      {removeId && <div className="notice" role="alert"><span>Удалить сохранённую команду? Программы и файлы не затрагиваются.</span><button className="secondary" onClick={() => setRemoveId(null)}>Отмена</button><button className="primary" onClick={() => { if (onSave(commands.filter(item => item.id !== removeId))) setRemoveId(null); }}>Удалить команду</button></div>}
+      {removeId && <div className="notice" role="alert"><span>Удалить сохранённую команду? Программы и файлы не затрагиваются. {modes.some(mode => mode.actions.some(action => action.kind === 'command' && action.commandId === removeId)) && 'Команда используется в режимах: связанные действия тоже будут удалены.'}</span><button className="secondary" onClick={() => setRemoveId(null)}>Отмена</button><button className="primary" onClick={() => { if (onSave(commands.filter(item => item.id !== removeId))) setRemoveId(null); }}>Удалить команду</button></div>}
     </section>
     {draft && <section className="panel editor"><h2>{commands.some(item => item.id === draft.id) ? 'Изменить команду' : 'Новая команда'}</h2><form onSubmit={submit}>
       <div className="form-grid"><label>Название команды<input required maxLength={48} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label>
