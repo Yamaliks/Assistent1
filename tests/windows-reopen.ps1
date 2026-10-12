@@ -25,6 +25,9 @@ if ([NativeWindow]::GetShellWindow() -eq [IntPtr]::Zero) {
   exit 0
 }
 $primary = Start-Process -FilePath (Resolve-Path $Exe) -PassThru
+# Retain the process handle before a short-lived GUI process can exit. PowerShell's
+# Start-Process otherwise may report a null ExitCode for a fast single-instance exit.
+$null = $primary.Handle
 try {
   Wait-For { $primary.Refresh(); !$primary.HasExited -and $primary.MainWindowHandle -ne [IntPtr]::Zero } 'First launch did not show the main window'
   $handle = $primary.MainWindowHandle
@@ -35,15 +38,24 @@ try {
     Wait-For { ![NativeWindow]::IsWindowVisible($handle) } 'Close did not hide the main window'
     if (![NativeWindow]::IsWindow($handle) -or $primary.HasExited) { throw 'Close destroyed the window/process' }
     $second = Start-Process -FilePath (Resolve-Path $Exe) -PassThru
+    $null = $second.Handle
     try {
       if (!$second.WaitForExit(30000)) { throw 'Second instance did not exit' }
+      if ($null -eq $second.ExitCode) { throw 'Second instance exit status could not be read' }
       if ($second.ExitCode -ne 0) { throw "Second instance failed: $($second.ExitCode)" }
       Wait-For { [NativeWindow]::IsWindowVisible($handle) -and ![NativeWindow]::IsIconic($handle) } 'Second launch did not restore the same HWND'
     } finally {
       if (!$second.HasExited) { Stop-Process -Id $second.Id -Force }
     }
   }
-  Write-Output 'Native release smoke passed: first launch visible, close preserves HWND, repeated EXE exits and restores the original minimized/hidden window.'
+  $result = 'Native release smoke passed: first launch visible, close preserves HWND, repeated EXE exits and restores the original minimized/hidden window.'
+  Write-Output $result
+  if ($env:GITHUB_STEP_SUMMARY) { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $result }
+} catch {
+  $detail = $_.Exception.Message -replace '[\r\n]+', ' '
+  Write-Output "::error::Native reopen smoke failed: $detail"
+  if ($env:GITHUB_STEP_SUMMARY) { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "Native reopen smoke failed: $detail" }
+  throw
 } finally {
   if (!$primary.HasExited) { Stop-Process -Id $primary.Id -Force }
 }
