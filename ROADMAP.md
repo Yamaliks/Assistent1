@@ -35,7 +35,8 @@
 
 ## 5. Windows integration
 
-- Tray, optional autostart, volume control and investigation of supported night-light APIs.
+- Tray lifecycle shipped as a stage 2 bug fix (0.1.1): close-to-tray, restore, explicit exit and single-instance reopen.
+- Optional autostart, volume control and investigation of supported night-light APIs remain future work.
 - Document platform limits; no unsupported registry hacks presented as stable APIs.
 
 ## 6. Local Russian speech recognition
