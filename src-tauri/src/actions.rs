@@ -3,9 +3,21 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
 pub enum LaunchAction {
-    Program { target: String },
-    Website { target: String },
-    Folder { target: String },
+    Program {
+        target: String,
+        #[serde(default)]
+        minimized: bool,
+    },
+    Browser {
+        #[serde(default)]
+        minimized: bool,
+    },
+    Website {
+        target: String,
+    },
+    Folder {
+        target: String,
+    },
 }
 
 #[tauri::command]
@@ -26,7 +38,18 @@ fn execute(action: LaunchAction) -> Result<(), String> {
     let program = matches!(&action, LaunchAction::Program { .. });
     match action {
         LaunchAction::Website { target } => open_association(&validate_url(&target)?),
-        LaunchAction::Program { target } | LaunchAction::Folder { target } => {
+        LaunchAction::Browser { minimized } => execute(LaunchAction::Program {
+            target: default_browser_exe()?,
+            minimized,
+        }),
+        LaunchAction::Program { ref target, .. } | LaunchAction::Folder { ref target } => {
+            let minimized = matches!(
+                &action,
+                LaunchAction::Program {
+                    minimized: true,
+                    ..
+                }
+            );
             validate_local_path(&target, program)?;
             let path = std::fs::canonicalize(&target)
                 .map_err(|e| format!("Путь не найден или недоступен: {e}"))?;
@@ -37,6 +60,13 @@ fn execute(action: LaunchAction) -> Result<(), String> {
             if program {
                 if !path.is_file() {
                     return Err("Указанный путь не является EXE-файлом".into());
+                }
+                if minimized {
+                    return shell_open(
+                        local,
+                        path.parent().and_then(|p| p.to_str()),
+                        windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWMINNOACTIVE,
+                    );
                 }
                 // One executable path, zero user arguments. Never cmd /c, PowerShell, or shell strings.
                 let mut child = std::process::Command::new(&path)
@@ -59,7 +89,16 @@ fn execute(action: LaunchAction) -> Result<(), String> {
 
 #[cfg(windows)]
 fn open_association(target: &str) -> Result<(), String> {
-    use windows_sys::Win32::UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL};
+    shell_open(
+        target,
+        None,
+        windows_sys::Win32::UI::WindowsAndMessaging::SW_SHOWNORMAL,
+    )
+}
+
+#[cfg(windows)]
+fn shell_open(target: &str, directory: Option<&str>, show: i32) -> Result<(), String> {
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
     let wide = |text: &str| {
         text.encode_utf16()
             .chain(std::iter::once(0))
@@ -67,6 +106,7 @@ fn open_association(target: &str) -> Result<(), String> {
     };
     let verb = wide("open");
     let target = wide(target);
+    let directory = directory.map(wide);
     // The validated URL/directory is lpFile; no shell command or parameters are supplied.
     let result = unsafe {
         ShellExecuteW(
@@ -74,8 +114,10 @@ fn open_association(target: &str) -> Result<(), String> {
             verb.as_ptr(),
             target.as_ptr(),
             std::ptr::null(),
-            std::ptr::null(),
-            SW_SHOWNORMAL,
+            directory
+                .as_ref()
+                .map_or(std::ptr::null(), |dir| dir.as_ptr()),
+            show,
         )
     } as isize;
     if result > 32 {
@@ -89,4 +131,30 @@ fn open_association(target: &str) -> Result<(), String> {
         _ => "Windows не смогла открыть адрес",
     };
     Err(format!("{reason} (код {result})"))
+}
+
+#[cfg(windows)]
+fn default_browser_exe() -> Result<String, String> {
+    use windows_sys::Win32::UI::Shell::{
+        AssocQueryStringW, ASSOCF_NOTRUNCATE, ASSOCSTR_EXECUTABLE,
+    };
+    let protocol: Vec<u16> = "http".encode_utf16().chain(Some(0)).collect();
+    let verb: Vec<u16> = "open".encode_utf16().chain(Some(0)).collect();
+    let mut buffer = vec![0u16; 32768];
+    let mut length = buffer.len() as u32;
+    let status = unsafe {
+        AssocQueryStringW(
+            ASSOCF_NOTRUNCATE,
+            ASSOCSTR_EXECUTABLE,
+            protocol.as_ptr(),
+            verb.as_ptr(),
+            buffer.as_mut_ptr(),
+            &mut length,
+        )
+    };
+    if status != 0 || length < 2 || length as usize > buffer.len() {
+        return Err("Не удалось определить EXE браузера по умолчанию. В моей библиотеке отключите браузер по умолчанию и выберите его EXE.".into());
+    }
+    String::from_utf16(&buffer[..length as usize - 1])
+        .map_err(|_| "Некорректный путь браузера. Выберите его EXE в библиотеке.".into())
 }

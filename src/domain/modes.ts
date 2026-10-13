@@ -1,5 +1,6 @@
 export type ModeIcon = 'game' | 'work' | 'rest' | 'night';
 export type ModeAction = { active?: boolean } & (
+  | { id: string; kind: 'browser'; label: string }
   | { id: string; kind: 'application'; label: string; applicationId: string }
   | { id: string; kind: 'site'; label: string; siteId: string }
   | { id: string; kind: 'command'; label: string; commandId: string }
@@ -25,6 +26,7 @@ export interface Mode {
   phrase: string;
   actions: ModeAction[];
   lastRun?: ModeRun;
+  launchMinimized?: boolean;
 }
 export function modeTemplate(icon: ModeIcon, modeId: string): ModeAction[] {
   const app = (id: string): ModeAction => ({ id: `${modeId}:${id}`, kind: 'application', label: '', applicationId: id, active: true });
@@ -47,6 +49,7 @@ const isObject = (value: unknown): value is Record<string, unknown> => !!value &
 function isAction(value: unknown): value is ModeAction {
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.label !== 'string' || (value.active !== undefined && typeof value.active !== 'boolean')) return false;
   switch (value.kind) {
+    case 'browser': return true;
     case 'application': return typeof value.applicationId === 'string' && !!value.applicationId;
     case 'site': return typeof value.siteId === 'string' && !!value.siteId;
     case 'command': return typeof value.commandId === 'string' && !!value.commandId;
@@ -62,6 +65,7 @@ export function isModeList(value: unknown): value is Mode[] {
     && typeof mode.id === 'string' && typeof mode.name === 'string'
     && typeof mode.description === 'string' && typeof mode.phrase === 'string'
     && ['game', 'work', 'rest', 'night'].includes(String(mode.icon))
+    && (mode.launchMinimized === undefined || typeof mode.launchMinimized === 'boolean')
     && (mode.lastRun === undefined || (isModeRun(mode.lastRun) && mode.lastRun.modeId === mode.id))
     && Array.isArray(mode.actions) && mode.actions.every(isAction)
     && new Set(mode.actions.map(action => action.id)).size === mode.actions.length)

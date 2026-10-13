@@ -3,11 +3,11 @@ import type { UserCommand } from '../domain/commands.ts';
 import { applicationName } from '../domain/applications.ts';
 import type { Settings } from './settingsStorage.ts';
 import { systemServices, type SystemServices } from './systemServices.ts';
-export async function executeUserCommand(command: UserCommand, services: SystemServices = systemServices): Promise<string> {
+export async function executeUserCommand(command: UserCommand, services: SystemServices = systemServices, minimized = false): Promise<string> {
   const base = { id: command.id, label: command.name };
   await services.execute(command.kind === 'website'
     ? { ...base, kind: 'website', url: command.target }
-    : { ...base, kind: command.kind, path: command.target });
+    : { ...base, kind: command.kind, path: command.target }, minimized);
   return `«${command.name}»: запрос ${command.kind === 'program' ? 'запуска' : 'открытия'} отправлен Windows.`;
 }
 export interface ModePlan { modeId: string; actionCount: number; executable: false; message: string }
@@ -41,9 +41,9 @@ export function createModeRunner(services: SystemServices = systemServices) {
             if (action.kind === 'application') {
               const app = snapshot.settings.applications.find(app => app.id === action.applicationId);
               if (!app) throw new Error('Приложение отсутствует в библиотеке.');
-              if (app.useDefaultBrowser) throw new Error('Для браузера по умолчанию добавьте действие сайта с адресом.');
+              if (app.useDefaultBrowser) { await services.execute({ id: action.id, kind: 'browser', label: name }, snapshot.mode.launchMinimized ?? false); } else {
               if (!app.path) throw new Error('Путь к EXE не настроен. Откройте мою библиотеку.');
-              await services.execute({ id: action.id, label: name, kind: 'program', path: app.path });
+              await services.execute({ id: action.id, label: name, kind: 'program', path: app.path }, snapshot.mode.launchMinimized ?? false); }
             } else if (action.kind === 'site') {
               const site = snapshot.settings.sites.find(site => site.id === action.siteId);
               if (!site?.url) throw new Error('Адрес сайта не настроен. Откройте мою библиотеку.');
@@ -51,8 +51,8 @@ export function createModeRunner(services: SystemServices = systemServices) {
             } else if (action.kind === 'command') {
               const command = snapshot.settings.commands.find(command => command.id === action.commandId);
               if (!command) throw new Error('Сохранённая команда не найдена.');
-              await executeUserCommand(command, services);
-            } else await services.execute(action);
+              await executeUserCommand(command, services, snapshot.mode.launchMinimized ?? false);
+            } else await services.execute(action, snapshot.mode.launchMinimized ?? false);
             results.push({ actionId: action.id, name, status: 'success', message: 'Запрос запуска выполнен' });
           } catch (error) {
             results.push({ actionId: action.id, name, status: 'error', message: error instanceof Error ? error.message : String(error) });

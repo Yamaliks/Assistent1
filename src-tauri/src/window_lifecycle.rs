@@ -99,4 +99,32 @@ mod tests {
         assert_eq!(restore(&window).unwrap_err(), "Window unavailable");
         assert_eq!(window.0.borrow().calls, ["show"]);
     }
+    #[test]
+    fn palette_repeated_shortcut_restores_hidden_minimized_window_and_refocuses() {
+        let window = Window(RefCell::new(State {
+            minimized: true,
+            ..State::default()
+        }));
+        restore(&window).unwrap();
+        restore(&window).unwrap();
+        close_to_tray(&window).unwrap();
+        restore(&window).unwrap();
+        let state = window.0.borrow();
+        assert!(state.visible && !state.minimized && state.focused);
+        assert_eq!(
+            state.calls,
+            [
+                "show",
+                "unminimize",
+                "focus",
+                "show",
+                "unminimize",
+                "focus",
+                "hide",
+                "show",
+                "unminimize",
+                "focus"
+            ]
+        );
+    }
 }

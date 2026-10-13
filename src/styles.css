@@ -201,3 +201,8 @@ summary:focus-visible { outline: 2px solid #a99aff; outline-offset: 4px; }
 .mode-results li > span:first-child { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
 .mode-results small { width: 100%; color: #a4a5b7; font-size: 12px; overflow-wrap: anywhere; }
 .result-success { color: #55c69a; }.result-error { color: #f17684; }.result-skipped { color: #a4a5b7; }
+.mode-card-buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+.mode-card-buttons > button { flex: 1; min-width: 0; white-space: normal; }
+.mode-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.palette-result { min-width: 0; }.palette-result > button { width: 100%; }
+.palette-result .field-help { padding: 0 8px; overflow-wrap: anywhere; }

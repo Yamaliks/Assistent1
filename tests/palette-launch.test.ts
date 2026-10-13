@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { freshSettings, loadSettings, saveSettings } from '../src/services/settingsStorage.ts';
+import { createModeController } from '../src/services/modeController.ts';
+import { createModeRunner } from '../src/services/modeEngine.ts';
+import { createSystemServices } from '../src/services/systemServices.ts';
+import { searchPalette } from '../src/services/paletteSearch.ts';
+test('main card and palette request one owner: no duplicate launch and the same progress/final state', async () => {
+  let settings = freshSettings(); settings.applications[0].path = 'C:\\Apps\\Steam.exe';
+  settings.modes[0].actions = [{ id: 'app', kind: 'application', label: '', applicationId: 'steam' }];
+  let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; }); let calls = 0;
+  const states: unknown[] = []; const runner = createModeRunner(createSystemServices(async () => { calls++; await gate; }));
+  const owner = createModeController(() => settings, state => states.push(state), result => { settings = { ...settings, modes: settings.modes.map(mode => mode.id === result.modeId ? { ...mode, lastRun: result } : mode) }; return true; }, () => {}, runner);
+  const main = owner.run('game'); const palette = owner.run('game');
+  assert.equal(calls, 1); assert.equal(owner.snapshot().game.status, 'running');
+  release(); await Promise.all([main, palette]);
+  assert.equal(calls, 1); assert.equal(owner.snapshot().game.status, 'ready');
+  assert.deepEqual(owner.snapshot().game, settings.modes[0].lastRun); assert.equal(states.length, 2);
+  await owner.run('game'); assert.equal(calls, 2);
+});
+test('palette search resolves saved modes, commands, apps and sites and updated library names', () => {
+  const settings = freshSettings(); settings.commands.push({ id: 'cmd', name: 'Открой почту', phrase: 'моя почта', kind: 'website', target: 'https://example.com' });
+  assert.equal(searchPalette(settings, 'игровой')[0].kind, 'mode');
+  assert.equal(searchPalette(settings, 'МОЯ ПОЧТА')[0].id, 'cmd');
+  assert.equal(searchPalette(settings, 'steam')[0].kind, 'application');
+  assert.equal(searchPalette(settings, 'youtube')[0].kind, 'site');
+  settings.applications[0].name = 'Моя игра'; assert.equal(searchPalette(settings, 'моя игра')[0].id, 'steam');
+  assert.deepEqual(searchPalette(settings, 'не существующее'), []);
+});
+test('default browser and minimized option use explicit launch intent with no fabricated URL; errors propagate', async () => {
+  const settings = freshSettings(); const mode = settings.modes[0]; mode.launchMinimized = true;
+  settings.applications[0].path = 'C:\\Apps\\Steam.exe';
+  mode.actions = [{ id: 'browser', kind: 'application', label: '', applicationId: 'browser' }, { id: 'program', kind: 'application', label: '', applicationId: 'steam' }, { id: 'site', kind: 'site', label: '', siteId: settings.sites[0].id }];
+  const requests: unknown[] = [];
+  const runner = createModeRunner(createSystemServices(async (kind, target, minimized) => { requests.push({ kind, target, minimized }); if (kind === 'browser') throw new Error('Выберите EXE браузера в библиотеке'); }));
+  const result = await runner.run(mode, settings);
+  assert.deepEqual(requests, [{ kind: 'browser', target: '', minimized: true }, { kind: 'program', target: 'C:\\Apps\\Steam.exe', minimized: true }, { kind: 'website', target: 'https://youtube.com', minimized: undefined }]);
+  assert.equal(result.status, 'errors'); assert.equal(result.results[0].status, 'error'); assert.equal(result.results[2].status, 'success');
+  const data = new Map<string, string>(); const storage = { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } };
+  mode.lastRun = result; saveSettings(storage, settings); assert.deepEqual(loadSettings(storage).settings, settings);
+  assert.equal(freshSettings().modes[0].launchMinimized, undefined);
+});
