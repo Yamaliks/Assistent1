@@ -1,29 +1,30 @@
 import { useState } from 'react';
-import { ArrowDown, ArrowLeft, ArrowUp, Command, FolderOpen, Globe, Monitor, MoreHorizontal, Plus, RotateCcw, Settings2, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Command, FolderOpen, Globe, Monitor, MoreHorizontal, Play, Plus, RotateCcw, Settings2, Trash2 } from 'lucide-react';
 import { applicationName, type ApplicationConfig } from '../domain/applications';
 import { targetError, type UserCommand } from '../domain/commands';
-import { moveAction, type Mode, type ModeAction } from '../domain/modes';
-import { ApplicationCreator, SiteEditor } from './LibraryPage';
+import { moveAction, type Mode, type ModeAction, type ModeRun } from '../domain/modes';
 import type { Site } from '../domain/sites';
-import { ApplicationEditor } from './ApplicationsPage';
+import type { ModeProgress } from '../services/modeEngine';
+import { desktop } from '../services/windows';
 
-export function ModeEditor({ mode, applications, sites, commands, onApplications, onSites, onAdd, onTemplate, onSave, onClose }: {
+export function ModeEditor({ mode, applications, sites, commands, run, onRun, onLibrary, onAdd, onTemplate, onSave, onClose }: {
   mode: Mode; applications: ApplicationConfig[]; sites: Site[]; commands: UserCommand[];
-  onApplications: (apps: ApplicationConfig[]) => boolean; onSites: (sites: Site[]) => boolean; onAdd: (mode: Mode, item: ApplicationConfig | Site) => Mode | null; onTemplate: (mode: Mode) => ModeAction[] | null; onSave: (mode: Mode) => boolean; onClose: () => void;
+  run?: ModeRun | ModeProgress; onRun: (mode: Mode) => void; onLibrary: (mode: Mode) => boolean; onAdd: (mode: Mode, item: ApplicationConfig | Site) => Mode | null; onTemplate: (mode: Mode) => ModeAction[] | null; onSave: (mode: Mode) => boolean; onClose: () => void;
 }) {
   const [draft, setDraft] = useState(() => structuredClone(mode));
   const [libraryKind, setLibraryKind] = useState<'application' | 'site' | null>(null);
   const [libraryId, setLibraryId] = useState('');
-  const [newSite, setNewSite] = useState<Site | null>(null);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [restore, setRestore] = useState(false);
   const [error, setError] = useState('');
+  const running = run?.status === 'running';
+  const openLibrary = () => { onLibrary(draft); };
   const change = (id: string, patch: Partial<ModeAction>) => setDraft(current => ({ ...current, actions: current.actions.map(action => action.id === id ? { ...action, ...patch } as ModeAction : action) }));
   function add(kind: 'application' | 'website' | 'folder' | 'command') {
     const base = { id: crypto.randomUUID(), label: '', active: true };
     let action: ModeAction;
-    if (kind === 'application' || kind === 'website') { setLibraryKind(kind === 'website' ? 'site' : 'application'); setLibraryId(''); setNewSite(null); setAdding(false); return; }
+    if (kind === 'application' || kind === 'website') { setLibraryKind(kind === 'website' ? 'site' : 'application'); setLibraryId(''); setAdding(false); return; }
     else if (kind === 'command') {
       if (!commands.length) { setError('Сначала создайте команду в разделе «Команды».'); return; }
       action = { ...base, kind, commandId: commands[0].id };
@@ -40,9 +41,13 @@ export function ModeEditor({ mode, applications, sites, commands, onApplications
     if (onSave({ ...draft, name: draft.name.trim() })) onClose();
   }
   return <section className="mode-editor" onKeyDown={event => { if (event.key === 'Escape') { event.currentTarget.querySelectorAll('details[open]').forEach(details => details.removeAttribute('open')); setEditingId(null); setAdding(false); } }}>
+    <div className="editor-toolbar"><button className="primary" disabled={running || !desktop || !draft.name.trim()} onClick={() => onRun(draft)}><Play size={18} />{running ? 'Запускается…' : 'Запустить режим'}</button><button className="secondary" disabled={running} onClick={openLibrary}>Открыть мою библиотеку</button></div>
+    {!desktop && <p className="field-help">Запуск доступен только в Windows-приложении.</p>}
+    {run && <section className="panel mode-results" aria-live="polite"><h2>{run.status === 'running' ? 'Запускается' : run.status === 'errors' ? 'Есть ошибки' : 'Готово'}</h2><p>{run.status === 'running' ? `Сейчас: ${run.current || 'подготовка'}` : run.summary}</p><ul>{run.results.map(result => <li key={result.actionId}><span>{result.name}</span><span className={`result-${result.status}`}>{result.status === 'success' ? 'Успешно' : result.status === 'error' ? 'Ошибка' : 'Пропущено'}</span><small>{result.message}</small></li>)}</ul></section>}
+    <fieldset className="mode-controls" disabled={running}>
     <div className="editor-toolbar"><button className="secondary" onClick={onClose}><ArrowLeft size={16} />Все режимы</button><button className="text-button" onClick={() => setRestore(true)}><RotateCcw size={16} />Восстановить шаблон</button></div>
     {restore && <div className="notice confirmation" role="alert"><p>Заменить список действий шаблоном? Ваши действия в этом режиме будут удалены. Общие пути приложений сохранятся.</p><div className="form-actions"><button className="secondary" onClick={() => setRestore(false)}>Отмена</button><button className="primary" onClick={() => { const actions = onTemplate(draft); if (actions) { setDraft({ ...draft, actions }); setEditingId(null); setRestore(false); } }}>Восстановить</button></div></div>}
-    <p className="editor-intro">Настройте приложения и добавьте свои действия. Запуск целого режима пока недоступен.</p>
+    <p className="editor-intro">Выбирайте готовые приложения и сайты из библиотеки. Действия запускаются по порядку; ошибки не останавливают остальные шаги.</p>
     {!draft.actions.length && <div className="panel empty-actions"><h2>Добавьте первое действие</h2><p>{draft.icon === 'night' ? 'Настройки громкости и ночного света пока не поддерживаются. Можно добавить приложение, сайт или папку.' : 'Выберите приложение, сайт, папку или свою команду.'}</p></div>}
     <div className="action-stack">{draft.actions.map((action, index) => {
       const app = action.kind === 'application' ? applications.find(app => app.id === action.applicationId) : undefined;
@@ -63,16 +68,13 @@ export function ModeEditor({ mode, applications, sites, commands, onApplications
           </div>
         </div>
         {action.kind === 'application' && <>
-          {app && <ApplicationEditor applications={applications} embedded key={`${app.id}:${app.path}:${app.useDefaultBrowser}`} app={app} name={applicationName(app)} onSave={next => onApplications(applications.map(item => item.id === app.id ? next : item))} />}
+          {app && <div className="action-config-row"><span className={`action-status ${app.path || app.useDefaultBrowser ? 'ready' : ''}`}>{app.path || app.useDefaultBrowser ? 'Настроено' : 'Не настроено'}</span><span className="path-preview" title={app.path}>{app.useDefaultBrowser ? 'Браузер по умолчанию — добавьте сайт с адресом' : app.path.split(/[\\/]/).pop() || 'Путь к EXE не задан'}</span><button className="secondary" onClick={openLibrary}>Открыть мою библиотеку</button></div>}
           <details className="advanced" open={editingId === action.id ? true : undefined}><summary>Другое приложение</summary>
             <label>Выберите приложение<select value={action.applicationId} onChange={e => change(action.id, { applicationId: e.target.value })}>{applications.map(app => <option key={app.id} value={app.id}>{applicationName(app)}</option>)}</select></label>
 
           </details>
         </>}
-        {action.kind === 'site' && site && <>
-          <p className="action-description">Сайт из моей библиотеки</p><div className="action-config-row"><span className={`action-status ${site.url ? 'ready' : ''}`}>{site.url ? 'Готово' : 'Не настроено'}</span><span className="path-preview" title={site.url}>{site.url || 'Укажите адрес'}</span><button className="secondary" onClick={() => setEditingId(editingId === action.id ? null : action.id)}>Изменить</button></div>
-          {editingId === action.id && <><label className="field-help">Выбрать другой сайт<select value={site.id} onChange={e => change(action.id, { siteId: e.target.value })}>{sites.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><SiteEditor sites={sites} key={site.id} site={site} onClose={() => setEditingId(null)} onSave={next => onSites(sites.map(item => item.id === site.id ? next : item))} /></>}
-        </>}
+        {action.kind === 'site' && site && <><p className="action-description">Сайт из моей библиотеки</p><div className="action-config-row"><span className={`action-status ${site.url ? 'ready' : ''}`}>{site.url ? 'Готово' : 'Не настроено'}</span><span className="path-preview" title={site.url}>{site.url || 'Укажите адрес в библиотеке'}</span><button className="secondary" onClick={openLibrary}>Открыть мою библиотеку</button></div></>}
         {(action.kind === 'website' || action.kind === 'folder' || action.kind === 'command') && <>
           <p className="action-description">{action.kind === 'website' ? 'Сайт' : action.kind === 'folder' ? 'Папка Windows' : 'Моя команда'}</p>
           <div className="action-config-row"><span className={`action-status ${ready ? 'ready' : ''}`}>{ready ? 'Готово' : 'Не настроено'}</span><span className="path-preview" title={target}>{action.kind === 'folder' ? target.split(/[\\/]/).pop() || 'Укажите папку' : target || 'Укажите адрес'}</span><button className={ready ? 'secondary' : 'primary'} aria-expanded={editingId === action.id} onClick={() => setEditingId(editingId === action.id ? null : action.id)}>{ready ? 'Изменить' : 'Настроить'}</button></div>
@@ -86,12 +88,11 @@ export function ModeEditor({ mode, applications, sites, commands, onApplications
     </div>
     {libraryKind && <section className="panel"><div className="section-heading"><h2>{libraryKind === 'application' ? 'Мои приложения' : 'Мои сайты'}</h2><button className="secondary" onClick={() => setLibraryKind(null)}>Отмена</button></div>
       <label className="field-help">Выберите из библиотеки<select value={libraryId} onChange={e => setLibraryId(e.target.value)}><option value="">Выберите элемент</option>{(libraryKind === 'application' ? applications.map(app => ({ id: app.id, name: applicationName(app) })) : sites).map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><button className="primary" disabled={!libraryId} onClick={() => { const item = libraryKind === 'application' ? applications.find(app => app.id === libraryId) : sites.find(site => site.id === libraryId); if (!item) return; const saved = onAdd(draft, item); if (saved) { setDraft(saved); setLibraryKind(null); setError(''); } }}>Добавить в режим</button>
-      <h3 className="mt-6">Или создайте новый элемент</h3>
-      {libraryKind === 'application' ? <ApplicationCreator applications={applications} onSave={app => { const saved = onAdd(draft, app); if (!saved) return false; setDraft(saved); setLibraryKind(null); return true; }} /> : <>{!newSite ? <button className="secondary mt-4" onClick={() => setNewSite({ id: crypto.randomUUID(), name: '', url: '' })}>Создать сайт</button> : <SiteEditor sites={sites} site={newSite} onClose={() => setNewSite(null)} onSave={site => { const saved = onAdd(draft, site); if (!saved) return false; setDraft(saved); setLibraryKind(null); return true; }} />}</>}
-
+      <p className="field-help">Новый элемент создаётся в библиотеке. После возврата он появится в этом списке.</p><button className="secondary mt-4" onClick={openLibrary}>Открыть мою библиотеку</button>
     </section>}
     <details className="advanced mode-metadata"><summary>Дополнительно — название и фраза режима</summary><div className="form-grid"><label>Название<input maxLength={48} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} /></label><label>Шаблон и иконка<select value={draft.icon} onChange={e => setDraft({ ...draft, icon: e.target.value as Mode['icon'] })}><option value="game">Игра</option><option value="work">Работа</option><option value="rest">Отдых</option><option value="night">Ночь</option></select></label><label className="full-width">Описание<input maxLength={120} value={draft.description} onChange={e => setDraft({ ...draft, description: e.target.value })} /></label><label className="full-width">Фраза в панели команд<input maxLength={100} value={draft.phrase} onChange={e => setDraft({ ...draft, phrase: e.target.value })} /></label></div></details>
     {error && <p className="form-error" role="alert">{error}</p>}
     <div className="editor-save"><span>Приложения и сайты добавляются сразу. Остальные изменения — после «Сохранить».</span><div className="form-actions"><button className="secondary" onClick={onClose}>Отмена</button><button className="primary" disabled={!draft.name.trim()} onClick={save}>Сохранить режим</button></div></div>
+    </fieldset>
   </section>;
 }

@@ -26,7 +26,8 @@ export function addLibraryAction(settings: Settings, draft: Mode, item: Applicat
   const action: ModeAction = application
     ? { id: actionId, kind: 'application', label: '', applicationId: selected.id, active: true }
     : { id: actionId, kind: 'site', label: '', siteId: selected.id, active: true };
-  const mode = { ...draft, actions: duplicate ? draft.actions : [...draft.actions, action] };
+  const lastRun = settings.modes.find(mode => mode.id === draft.id)?.lastRun;
+  const mode = { ...draft, ...(lastRun ? { lastRun } : {}), actions: duplicate ? draft.actions : [...draft.actions, action] };
   return { mode, settings: { ...settings,
     applications: application && !existing ? [...settings.applications, item] : settings.applications,
     sites: !application && !existing ? [...settings.sites, item] : settings.sites,
