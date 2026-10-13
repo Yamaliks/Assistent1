@@ -1,14 +1,18 @@
 import type { ActionResult, Mode, ModeAction, ModeRun } from '../domain/modes.ts';
 import type { UserCommand } from '../domain/commands.ts';
+import { normalizeExe } from './libraryEditing.ts';
 import { applicationName } from '../domain/applications.ts';
 import type { Settings } from './settingsStorage.ts';
-import { systemServices, type SystemServices } from './systemServices.ts';
-export async function executeUserCommand(command: UserCommand, services: SystemServices = systemServices, minimized = false): Promise<string> {
+import { systemServices, type LaunchOutcome, type SystemServices } from './systemServices.ts';
+export async function launchUserCommand(command: UserCommand, services: SystemServices = systemServices, minimized = false, skipIfRunning = false): Promise<LaunchOutcome> {
   const base = { id: command.id, label: command.name };
-  await services.execute(command.kind === 'website'
+  return services.execute(command.kind === 'website'
     ? { ...base, kind: 'website', url: command.target }
-    : { ...base, kind: command.kind, path: command.target }, minimized);
-  return `«${command.name}»: запрос ${command.kind === 'program' ? 'запуска' : 'открытия'} отправлен Windows.`;
+    : { ...base, kind: command.kind, path: command.target }, minimized, skipIfRunning);
+}
+export async function executeUserCommand(command: UserCommand, services: SystemServices = systemServices, minimized = false, skipIfRunning = false): Promise<string> {
+  const outcome = await launchUserCommand(command, services, minimized, skipIfRunning);
+  return outcome === 'already-running' ? `«${command.name}»: уже работает.` : `«${command.name}»: запрос ${command.kind === 'program' ? 'запуска' : 'открытия'} отправлен Windows.`;
 }
 export interface ModePlan { modeId: string; actionCount: number; executable: false; message: string }
 export function planMode(mode: Mode): ModePlan {
@@ -38,31 +42,34 @@ export function createModeRunner(services: SystemServices = systemServices) {
           onProgress({ modeId: mode.id, status: 'running', current: name, results: [...results] });
           if (action.active === false) { results.push({ actionId: action.id, name, status: 'skipped', message: 'Отключено' }); continue; }
           try {
+            let outcome: LaunchOutcome = 'launched';
             if (action.kind === 'application') {
               const app = snapshot.settings.applications.find(app => app.id === action.applicationId);
               if (!app) throw new Error('Приложение отсутствует в библиотеке.');
-              if (app.useDefaultBrowser) { await services.execute({ id: action.id, kind: 'browser', label: name }, snapshot.mode.launchMinimized ?? false); } else {
+              if (app.useDefaultBrowser) { outcome = await services.execute({ id: action.id, kind: 'browser', label: name }, snapshot.mode.launchMinimized ?? false, true); } else {
               if (!app.path) throw new Error('Путь к EXE не настроен. Откройте мою библиотеку.');
-              await services.execute({ id: action.id, label: name, kind: 'program', path: app.path }, snapshot.mode.launchMinimized ?? false); }
+              outcome = await services.execute({ id: action.id, label: name, kind: 'program', path: app.path }, snapshot.mode.launchMinimized ?? false, true); }
             } else if (action.kind === 'site') {
               const site = snapshot.settings.sites.find(site => site.id === action.siteId);
               if (!site?.url) throw new Error('Адрес сайта не настроен. Откройте мою библиотеку.');
-              await services.execute({ id: action.id, label: name, kind: 'website', url: site.url });
+              outcome = await services.execute({ id: action.id, label: name, kind: 'website', url: site.url });
             } else if (action.kind === 'command') {
               const command = snapshot.settings.commands.find(command => command.id === action.commandId);
               if (!command) throw new Error('Сохранённая команда не найдена.');
-              await executeUserCommand(command, services, snapshot.mode.launchMinimized ?? false);
-            } else await services.execute(action, snapshot.mode.launchMinimized ?? false);
-            results.push({ actionId: action.id, name, status: 'success', message: 'Запрос запуска выполнен' });
+              const skip = command.kind === 'program' && snapshot.settings.applications.some(app => app.skipIfRunning && app.path && normalizeExe(app.path) === normalizeExe(command.target));
+              outcome = await launchUserCommand(command, services, snapshot.mode.launchMinimized ?? false, skip);
+            } else outcome = await services.execute(action, snapshot.mode.launchMinimized ?? false);
+            results.push({ actionId: action.id, name, status: outcome === 'already-running' ? 'already-running' : 'success', message: outcome === 'already-running' ? 'Уже работает — повторный запуск не нужен' : 'Запущено' });
           } catch (error) {
             results.push({ actionId: action.id, name, status: 'error', message: error instanceof Error ? error.message : String(error) });
           }
         }
         const errors = results.filter(result => result.status === 'error').length;
         const success = results.filter(result => result.status === 'success').length;
+        const already = results.filter(result => result.status === 'already-running').length;
         const skipped = results.filter(result => result.status === 'skipped').length;
         return { modeId: mode.id, finishedAt: new Date().toISOString(), status: errors ? 'errors' : 'ready',
-          summary: `«${mode.name}»: выполнено ${success}, ошибок ${errors}, пропущено ${skipped}.`, results };
+          summary: `«${mode.name}»: запущено ${success}, уже работает ${already}, ошибок ${errors}, пропущено ${skipped}.`, results };
       } finally { running.delete(mode.id); }
     },
   };

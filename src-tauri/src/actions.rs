@@ -1,4 +1,10 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+#[derive(Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum LaunchOutcome {
+    Launched,
+    AlreadyRunning,
+}
 
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", deny_unknown_fields)]
@@ -7,6 +13,8 @@ pub enum LaunchAction {
         target: String,
         #[serde(default)]
         minimized: bool,
+        #[serde(default)]
+        skip_if_running: bool,
     },
     Browser {
         #[serde(default)]
@@ -21,19 +29,19 @@ pub enum LaunchAction {
 }
 
 #[tauri::command]
-pub async fn execute_action(action: LaunchAction) -> Result<(), String> {
+pub async fn execute_action(action: LaunchAction) -> Result<LaunchOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || execute(action))
         .await
         .map_err(|e| format!("Ошибка обработки команды: {e}"))?
 }
 
 #[cfg(not(windows))]
-fn execute(_action: LaunchAction) -> Result<(), String> {
+fn execute(_action: LaunchAction) -> Result<LaunchOutcome, String> {
     Err("Запуск системных действий поддерживается только на Windows".into())
 }
 
 #[cfg(windows)]
-fn execute(action: LaunchAction) -> Result<(), String> {
+fn execute(action: LaunchAction) -> Result<LaunchOutcome, String> {
     use super::launch_validation::{validate_local_path, validate_url};
     let program = matches!(&action, LaunchAction::Program { .. });
     match action {
@@ -41,6 +49,7 @@ fn execute(action: LaunchAction) -> Result<(), String> {
         LaunchAction::Browser { minimized } => execute(LaunchAction::Program {
             target: default_browser_exe()?,
             minimized,
+            skip_if_running: true,
         }),
         LaunchAction::Program { ref target, .. } | LaunchAction::Folder { ref target } => {
             let minimized = matches!(
@@ -61,6 +70,37 @@ fn execute(action: LaunchAction) -> Result<(), String> {
                 if !path.is_file() {
                     return Err("Указанный путь не является EXE-файлом".into());
                 }
+                // Serialize this application's guarded check+launch requests. This does not
+                // lock or manipulate other processes; external launches may still race us.
+                static CHECK_AND_LAUNCH: std::sync::Mutex<()> = std::sync::Mutex::new(());
+                let _guard = if matches!(
+                    &action,
+                    LaunchAction::Program {
+                        skip_if_running: true,
+                        ..
+                    }
+                ) {
+                    Some(
+                        CHECK_AND_LAUNCH
+                            .lock()
+                            .map_err(|_| "Не удалось безопасно проверить повторный запуск")?,
+                    )
+                } else {
+                    None
+                };
+                if matches!(
+                    &action,
+                    LaunchAction::Program {
+                        skip_if_running: true,
+                        ..
+                    }
+                ) {
+                    match super::process_identity::inspect(local)? {
+                        super::process_identity::RunningState::AlreadyRunning => return Ok(LaunchOutcome::AlreadyRunning),
+                        super::process_identity::RunningState::Unknown => return Err("Не удалось достоверно проверить полный путь работающего приложения. Повторный запуск не выполнен; проверьте приложение вручную.".into()),
+                        super::process_identity::RunningState::NotRunning => {},
+                    }
+                }
                 if minimized {
                     return shell_open(
                         local,
@@ -76,7 +116,7 @@ fn execute(action: LaunchAction) -> Result<(), String> {
                 std::thread::spawn(move || {
                     let _ = child.wait();
                 });
-                Ok(())
+                Ok(LaunchOutcome::Launched)
             } else {
                 if !path.is_dir() {
                     return Err("Указанный путь не является папкой".into());
@@ -88,7 +128,7 @@ fn execute(action: LaunchAction) -> Result<(), String> {
 }
 
 #[cfg(windows)]
-fn open_association(target: &str) -> Result<(), String> {
+fn open_association(target: &str) -> Result<LaunchOutcome, String> {
     shell_open(
         target,
         None,
@@ -97,7 +137,7 @@ fn open_association(target: &str) -> Result<(), String> {
 }
 
 #[cfg(windows)]
-fn shell_open(target: &str, directory: Option<&str>, show: i32) -> Result<(), String> {
+fn shell_open(target: &str, directory: Option<&str>, show: i32) -> Result<LaunchOutcome, String> {
     use windows_sys::Win32::UI::Shell::ShellExecuteW;
     let wide = |text: &str| {
         text.encode_utf16()
@@ -121,7 +161,7 @@ fn shell_open(target: &str, directory: Option<&str>, show: i32) -> Result<(), St
         )
     } as isize;
     if result > 32 {
-        return Ok(());
+        return Ok(LaunchOutcome::Launched);
     }
     let reason = match result {
         2 | 3 => "Адрес или папка не найдены",

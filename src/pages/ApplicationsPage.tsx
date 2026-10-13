@@ -22,6 +22,7 @@ export function ApplicationEditor({ app, name, onSave, applications = [], embedd
   const inputId = useId();
   const [appName, setAppName] = useState(name);
   const [path, setPath] = useState(app.path);
+  const [skipIfRunning, setSkipIfRunning] = useState(app.skipIfRunning ?? false);
   const [useDefault, setUseDefault] = useState(app.useDefaultBrowser);
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -44,7 +45,7 @@ export function ApplicationEditor({ app, name, onSave, applications = [], embedd
     const duplicate = nextPath && duplicateApplication(applications, { ...app, path: nextPath });
     if (duplicate && nextPath !== app.path) throw new Error(`Этот EXE уже есть в библиотеке: «${applicationName(duplicate)}». Выберите существующее приложение при добавлении действия.`);
     if (editName && !appName.trim()) throw new Error('Укажите название приложения.');
-    if (onSave({ ...app, ...(editName ? { name: appName.trim() } : {}), path: nextPath, useDefaultBrowser: defaultBrowser })) { setOpen(false); setMessage('Сохранено.'); }
+    if (onSave({ ...app, ...(editName ? { name: appName.trim() } : {}), path: nextPath, useDefaultBrowser: defaultBrowser, skipIfRunning })) { setOpen(false); setMessage('Сохранено.'); }
     else throw new Error('Не удалось сохранить путь.');
   }
   async function choose() {
@@ -70,7 +71,8 @@ export function ApplicationEditor({ app, name, onSave, applications = [], embedd
     {open && <form className="action-edit-fields" onSubmit={event => { void submit(event); }}>
       {editName && <label>Название приложения<input required maxLength={48} value={appName} onChange={e => setAppName(e.target.value)} /></label>}
       {app.id === 'browser' && <label className="checkbox-label"><input type="checkbox" checked={useDefault} disabled={busy} onChange={e => setUseDefault(e.target.checked)} />Использовать браузер по умолчанию</label>}
-      <label htmlFor={inputId}>Путь к приложению</label><div className="path-input-row"><input id={inputId} value={path} disabled={busy || useDefault} placeholder="Полный путь к EXE" spellCheck={false} onChange={e => { setPath(e.target.value); setMessage(''); }} />
+      <label className="checkbox-label"><input type="checkbox" checked={app.id === 'browser' && useDefault ? true : skipIfRunning} disabled={busy || (app.id === 'browser' && useDefault)} onChange={e => setSkipIfRunning(e.target.checked)} />Не запускать повторно, если уже работает</label>
+      <p className="field-help">Проверяется полный путь EXE. Для браузера по умолчанию проверка всегда включена.</p><label htmlFor={inputId}>Путь к приложению</label><div className="path-input-row"><input id={inputId} value={path} disabled={busy || useDefault} placeholder="Полный путь к EXE" spellCheck={false} onChange={e => { setPath(e.target.value); setMessage(''); }} />
         <button type="button" className="secondary" disabled={!desktop || busy || useDefault} onClick={() => { void choose(); }}><FolderOpen size={16} />Выбрать EXE</button></div>
       <p className="field-help">Путь общий для всех режимов. При выборе файла он сохраняется сразу.{!desktop && ' Проверка файла доступна в Windows.'}</p>
       <div className="form-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setOpen(false)}>Отмена</button><button className="primary" disabled={busy}>Сохранить путь</button></div>
