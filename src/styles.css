@@ -206,3 +206,4 @@ summary:focus-visible { outline: 2px solid #a99aff; outline-offset: 4px; }
 .mode-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
 .palette-result { min-width: 0; }.palette-result > button { width: 100%; }
 .palette-result .field-help { padding: 0 8px; overflow-wrap: anywhere; }
+.result-already-running { color: #a99aff; }

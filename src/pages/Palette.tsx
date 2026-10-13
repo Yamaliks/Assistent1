@@ -13,7 +13,7 @@ import { routeCommand } from '../services/commandRouter';
 import { desktop, hidePalette, showMain } from '../services/windows';
 export function Palette({ settings, runs, onRun, message, notify, reportError }: { settings: Settings; runs: ModeStates; onRun: (id: string) => void; message: string; notify: (message: string) => void; reportError: (error: unknown) => void }) {
   const [query, setQuery] = useState(''); const input = useRef<HTMLInputElement>(null); const browserLock = useRef(false); const [browserBusy, setBrowserBusy] = useState(false);
-  const execution = useCommandExecution(notify); const busy = execution.busy || browserBusy;
+  const execution = useCommandExecution(notify, settings.applications); const busy = execution.busy || browserBusy;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') void hidePalette().catch(reportError); };
     window.addEventListener('keydown', onKey); let disposed = false; const cleanups: (() => void)[] = [];
@@ -27,9 +27,9 @@ export function Palette({ settings, runs, onRun, message, notify, reportError }:
     if (item.kind === 'command') { const command = settings.commands.find(command => command.id === item.id); if (command) await execution.run(command); return; }
     if (item.kind === 'site') { const site = settings.sites.find(site => site.id === item.id); if (site) await execution.run({ id: site.id, name: site.name, phrase: '', kind: 'website', target: site.url }); return; }
     const app = settings.applications.find(app => app.id === item.id); if (!app) return;
-    if (!app.useDefaultBrowser) { await execution.run({ id: app.id, name: item.name, phrase: '', kind: 'program', target: app.path }); return; }
+
     browserLock.current = true; setBrowserBusy(true);
-    try { await systemServices.execute({ id: app.id, kind: 'browser', label: item.name }); notify('Запрос запуска браузера выполнен.'); }
+    try { const outcome = await systemServices.execute(app.useDefaultBrowser ? { id: app.id, kind: 'browser', label: item.name } : { id: app.id, kind: 'program', label: item.name, path: app.path }, false, app.useDefaultBrowser || (app.skipIfRunning ?? false)); notify(outcome === 'already-running' ? `«${item.name}»: уже работает.` : `«${item.name}»: запущено.`); }
     catch (error) { reportError(error); } finally { browserLock.current = false; setBrowserBusy(false); }
   }
   function submit(event: FormEvent) {
