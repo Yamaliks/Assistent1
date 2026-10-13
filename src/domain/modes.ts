@@ -1,6 +1,7 @@
 export type ModeIcon = 'game' | 'work' | 'rest' | 'night';
 export type ModeAction = { active?: boolean } & (
   | { id: string; kind: 'application'; label: string; applicationId: string }
+  | { id: string; kind: 'site'; label: string; siteId: string }
   | { id: string; kind: 'command'; label: string; commandId: string }
   | { id: string; kind: 'program'; label: string; path: string }
   | { id: string; kind: 'website'; label: string; url: string }
@@ -37,6 +38,7 @@ function isAction(value: unknown): value is ModeAction {
   if (!isObject(value) || typeof value.id !== 'string' || typeof value.label !== 'string' || (value.active !== undefined && typeof value.active !== 'boolean')) return false;
   switch (value.kind) {
     case 'application': return typeof value.applicationId === 'string' && !!value.applicationId;
+    case 'site': return typeof value.siteId === 'string' && !!value.siteId;
     case 'command': return typeof value.commandId === 'string' && !!value.commandId;
     case 'program': case 'folder': return typeof value.path === 'string';
     case 'website': return typeof value.url === 'string';
@@ -65,4 +67,10 @@ export function moveAction(actions: ModeAction[], id: string, offset: -1 | 1): M
 }
 export function removeCommandActions(modes: Mode[], commandIds: Set<string>): Mode[] {
   return modes.map(mode => ({ ...mode, actions: mode.actions.filter(action => action.kind !== 'command' || commandIds.has(action.commandId)) }));
+}
+
+export function removeLibraryActions(modes: Mode[], kind: 'application' | 'site', id: string): Mode[] {
+  return modes.map(mode => ({ ...mode, actions: mode.actions.filter(action =>
+    !(kind === 'application' && action.kind === 'application' && action.applicationId === id)
+    && !(kind === 'site' && action.kind === 'site' && action.siteId === id)) }));
 }

@@ -4,10 +4,10 @@ import { moveAction, removeCommandActions } from '../src/domain/modes.ts';
 import { freshSettings, loadSettings, saveSettings, STORAGE_KEY } from '../src/services/settingsStorage.ts';
 function storage() { const data = new Map<string, string>(); return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; }
 test('add, reorder, disable and remove actions survive restart; empty list is never repopulated', () => {
-  const port = storage(); const settings = freshSettings(); const mode = settings.modes[0];
+  const port = storage(); const settings = freshSettings(); const mode = settings.modes[0]; settings.sites.push({ id: 'my-site', name: 'Сайт', url: 'https://example.com' });
   mode.actions = [
     { id: 'app', kind: 'application', label: 'Steam', applicationId: 'steam', active: true },
-    { id: 'web', kind: 'website', label: 'Сайт', url: 'https://example.com', active: false },
+    { id: 'web', kind: 'site', label: 'Сайт', siteId: 'my-site', active: false },
     { id: 'dir', kind: 'folder', label: 'Папка', path: 'C:\\Documents', active: true },
   ];
   mode.actions = moveAction(mode.actions, 'dir', -1);
@@ -59,7 +59,7 @@ test('3A settings keep paths, commands, modes and empty lists; legacy inline EXE
   const raw = JSON.stringify({ version: 2, ...settings }); port.setItem(STORAGE_KEY, raw);
   const loaded = loadSettings(port); assert.equal(loaded.warning, undefined);
   assert.equal(port.getItem(STORAGE_KEY), raw);
-  assert.deepEqual(loaded.settings.modes[0].actions[0], { id: 'old', kind: 'application', label: 'Steam', active: undefined, applicationId: 'steam' });
+  assert.deepEqual(loaded.settings.modes[0].actions[0], { id: 'old', kind: 'application', label: 'Steam', applicationId: 'steam' });
   assert.deepEqual(loaded.settings.modes[2].actions, []);
   saveSettings(port, loaded.settings);
   const reloaded = loadSettings(port).settings;

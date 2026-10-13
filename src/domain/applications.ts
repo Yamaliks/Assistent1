@@ -10,11 +10,9 @@ export function defaultApplications(): ApplicationConfig[] {
   return applicationDefinitions.map(({ id }) => ({ id, path: '', useDefaultBrowser: id === 'browser' }));
 }
 export function isApplicationList(value: unknown): value is ApplicationConfig[] {
-  return Array.isArray(value) && value.length >= applicationDefinitions.length
-    && applicationDefinitions.every(({ id }) => value.filter(item => item?.id === id).length === 1)
-    && new Set(value.map(item => item?.id)).size === value.length
+  return Array.isArray(value) && new Set(value.map(item => item?.id)).size === value.length
     && value.every(item => typeof item?.id === 'string' && !!item.id
-      && (applicationDefinitions.some(app => app.id === item.id) || (typeof item.name === 'string' && !!item.name.trim() && item.name.length <= 48))
+      && (item.name === undefined ? applicationDefinitions.some(app => app.id === item.id) : typeof item.name === 'string' && !!item.name.trim() && item.name.length <= 48)
       && typeof item.path === 'string' && typeof item.useDefaultBrowser === 'boolean'
       && (!item.useDefaultBrowser || (item.id === 'browser' && item.path === ''))
       && (!item.path || !targetError('program', item.path)));

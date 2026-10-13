@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type FormEvent } from 'react';
-import { FolderOpen, Monitor } from 'lucide-react';
+import { FolderOpen, Monitor, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { applicationName, type ApplicationConfig } from '../domain/applications';
 import { targetError } from '../domain/commands';
@@ -17,8 +17,9 @@ export function ApplicationsPage({ applications, onSave }: { applications: Appli
   </>;
 }
 const appDescriptions: Record<string, string> = { steam: 'Игровая библиотека', discord: 'Общение', telegram: 'Сообщения', vpn: 'Запуск вашего VPN-приложения', browser: 'Интернет' };
-export function ApplicationEditor({ app, name, onSave, embedded = false }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean; embedded?: boolean }) {
+export function ApplicationEditor({ app, name, onSave, embedded = false, editName = false, onDelete }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean; embedded?: boolean; editName?: boolean; onDelete?: () => void }) {
   const inputId = useId();
+  const [appName, setAppName] = useState(name);
   const [path, setPath] = useState(app.path);
   const [useDefault, setUseDefault] = useState(app.useDefaultBrowser);
   const [open, setOpen] = useState(false);
@@ -39,7 +40,8 @@ export function ApplicationEditor({ app, name, onSave, embedded = false }: { app
       const invalid = targetError('program', nextPath); if (invalid) throw new Error(invalid);
       if (desktop) await invoke('check_application_exe', { path: nextPath });
     }
-    if (onSave({ ...app, path: nextPath, useDefaultBrowser: defaultBrowser })) { setOpen(false); setMessage('Сохранено.'); }
+    if (editName && !appName.trim()) throw new Error('Укажите название приложения.');
+    if (onSave({ ...app, ...(editName ? { name: appName.trim() } : {}), path: nextPath, useDefaultBrowser: defaultBrowser })) { setOpen(false); setMessage('Сохранено.'); }
     else throw new Error('Не удалось сохранить путь.');
   }
   async function choose() {
@@ -55,7 +57,7 @@ export function ApplicationEditor({ app, name, onSave, embedded = false }: { app
   }
   const ready = app.useDefaultBrowser || (!!app.path && exists !== false);
   return <div className={embedded ? 'application-settings' : 'action-card'}>
-    {!embedded && <div className="action-title"><span className="mode-icon"><Monitor size={20} /></span><div><h3>{name}</h3><p>{appDescriptions[app.id] ?? 'Ваше приложение'}</p></div></div>}
+    {!embedded && <div className="action-card-header"><div className="action-title"><span className="mode-icon"><Monitor size={20} /></span><div><h3>{name}</h3><p>{appDescriptions[app.id] ?? 'Ваше приложение'}</p></div></div>{onDelete && <button className="icon-button" aria-label={`Удалить ${name}`} onClick={onDelete}><Trash2 size={18} /></button>}</div>}
     {embedded && <p className="action-description">{appDescriptions[app.id] ?? 'Ваше приложение'}</p>}
     <div className="action-config-row"><span className={`action-status ${ready ? 'ready' : ''}`}>{desktop && app.path && exists === null ? 'Проверяем файл…' : ready ? 'Готово' : 'Не настроено'}</span>
       <span className="path-preview" title={app.path || undefined}>{app.useDefaultBrowser ? 'Браузер по умолчанию' : app.path ? app.path.split(/[\\/]/).pop() : 'Выберите установленное приложение'}</span>
@@ -63,6 +65,7 @@ export function ApplicationEditor({ app, name, onSave, embedded = false }: { app
       <button className="secondary" disabled={busy} aria-expanded={open} onClick={() => setOpen(!open)}>{ready ? 'Изменить' : 'Ввести путь'}</button>
     </div>
     {open && <form className="action-edit-fields" onSubmit={event => { void submit(event); }}>
+      {editName && <label>Название приложения<input required maxLength={48} value={appName} onChange={e => setAppName(e.target.value)} /></label>}
       {app.id === 'browser' && <label className="checkbox-label"><input type="checkbox" checked={useDefault} disabled={busy} onChange={e => setUseDefault(e.target.checked)} />Использовать браузер по умолчанию</label>}
       <label htmlFor={inputId}>Путь к приложению</label><div className="path-input-row"><input id={inputId} value={path} disabled={busy || useDefault} placeholder="Полный путь к EXE" spellCheck={false} onChange={e => { setPath(e.target.value); setMessage(''); }} />
         <button type="button" className="secondary" disabled={!desktop || busy || useDefault} onClick={() => { void choose(); }}><FolderOpen size={16} />Выбрать EXE</button></div>

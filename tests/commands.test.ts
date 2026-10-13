@@ -8,7 +8,7 @@ import { executeUserCommand, planMode } from '../src/services/modeEngine.ts';
 const command: UserCommand = { id: 'site', name: 'Документация', phrase: 'открой документацию', kind: 'website', target: 'https://example.com' };
 function storage() { const data = new Map<string, string>(); return { getItem: (key: string) => data.get(key) ?? null, setItem: (key: string, value: string) => { data.set(key, value); } }; }
 test('v1 settings migrate without losing modes or hints or rewriting stored bytes', () => {
-  const port = storage(); const old = freshSettings(); old.modes[0].name = 'Старое имя'; old.compactHints = false;
+  const port = storage(); const old = freshSettings(); old.modes.forEach(mode => { mode.actions = []; }); old.sites = []; old.modes[0].name = 'Старое имя'; old.compactHints = false;
   const raw = JSON.stringify({ version: 1, modes: old.modes, compactHints: old.compactHints }); port.setItem(STORAGE_KEY, raw);
   assert.deepEqual(loadSettings(port).settings, old); assert.equal(port.getItem(STORAGE_KEY), raw);
 });
