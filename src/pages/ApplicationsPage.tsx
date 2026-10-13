@@ -2,6 +2,7 @@ import { useEffect, useId, useState, type FormEvent } from 'react';
 import { FolderOpen, Monitor, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { applicationName, type ApplicationConfig } from '../domain/applications';
+import { duplicateApplication } from '../services/libraryEditing';
 import { targetError } from '../domain/commands';
 import { desktop } from '../services/windows';
 
@@ -17,7 +18,7 @@ export function ApplicationsPage({ applications, onSave }: { applications: Appli
   </>;
 }
 const appDescriptions: Record<string, string> = { steam: 'Игровая библиотека', discord: 'Общение', telegram: 'Сообщения', vpn: 'Запуск вашего VPN-приложения', browser: 'Интернет' };
-export function ApplicationEditor({ app, name, onSave, embedded = false, editName = false, onDelete }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean; embedded?: boolean; editName?: boolean; onDelete?: () => void }) {
+export function ApplicationEditor({ app, name, onSave, applications = [], embedded = false, editName = false, onDelete }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean; applications?: ApplicationConfig[]; embedded?: boolean; editName?: boolean; onDelete?: () => void }) {
   const inputId = useId();
   const [appName, setAppName] = useState(name);
   const [path, setPath] = useState(app.path);
@@ -40,6 +41,8 @@ export function ApplicationEditor({ app, name, onSave, embedded = false, editNam
       const invalid = targetError('program', nextPath); if (invalid) throw new Error(invalid);
       if (desktop) await invoke('check_application_exe', { path: nextPath });
     }
+    const duplicate = nextPath && duplicateApplication(applications, { ...app, path: nextPath });
+    if (duplicate && nextPath !== app.path) throw new Error(`Этот EXE уже есть в библиотеке: «${applicationName(duplicate)}». Выберите существующее приложение при добавлении действия.`);
     if (editName && !appName.trim()) throw new Error('Укажите название приложения.');
     if (onSave({ ...app, ...(editName ? { name: appName.trim() } : {}), path: nextPath, useDefaultBrowser: defaultBrowser })) { setOpen(false); setMessage('Сохранено.'); }
     else throw new Error('Не удалось сохранить путь.');

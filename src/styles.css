@@ -184,3 +184,14 @@ summary:focus-visible { outline: 2px solid #a99aff; outline-offset: 4px; }
 @media (max-width: 850px) { .action-type-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 600px) { .action-card { padding: 16px; }.path-input-row, .new-application { flex-direction: column; align-items: stretch; }.action-config-row .path-preview { flex-basis: calc(100% - 110px); }.action-config-row button { flex: 1; }.action-title h3 { font-size: 16px; }.action-controls { gap: 12px; }.editor-save .form-actions { width: 100%; }.editor-toolbar .text-button { font-size: 13px; }.action-type-picker { grid-template-columns: 1fr; } }
 .library-tabs { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 24px; }
+/* Bugfix: allow forms and action controls to shrink and wrap inside the workspace. */
+.form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.form-grid > *, .form-grid label, .mode-editor .panel, .command-editor { min-width: 0; }
+.form-actions, .editor-toolbar, .action-config-row, .path-input-row, .new-application { flex-wrap: wrap; }
+.form-actions > button { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.action-type-picker > button { min-width: 0; white-space: normal; }
+.path-input-row > input { flex: 1 1 200px; width: auto; min-width: 0; }
+.path-input-row > button, .new-application > button { flex-shrink: 1; max-width: 100%; }
+.command-editor label { color: #a4a5b7; font-size: 13px; }
+@media (max-width: 850px) { .mode-editor .form-grid, .command-editor .form-grid { grid-template-columns: minmax(0, 1fr); }.mode-editor .action-type-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); }.mode-editor .panel { padding: 16px; } }
+@media (max-width: 600px) { .form-grid { grid-template-columns: minmax(0, 1fr); }.path-input-row > input { flex-basis: auto; width: 100%; }.form-actions { flex-direction: column; align-items: stretch; }.action-card-header { gap: 12px; }.mode-editor .action-type-picker { grid-template-columns: minmax(0, 1fr); } }
