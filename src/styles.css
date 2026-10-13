@@ -207,3 +207,9 @@ summary:focus-visible { outline: 2px solid #a99aff; outline-offset: 4px; }
 .palette-result { min-width: 0; }.palette-result > button { width: 100%; }
 .palette-result .field-help { padding: 0 8px; overflow-wrap: anywhere; }
 .result-already-running { color: #a99aff; }
+.action-results { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 16px; }
+.action-results li { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; min-width: 0; }
+.action-results li > span:first-child { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
+.action-results small, .launch-details { width: 100%; color: #a4a5b7; font-size: 12px; overflow-wrap: anywhere; }
+.launch-details summary { color: #a99aff; padding: 4px 0; }.launch-details dl { margin: 12px 0; }.launch-details dt { color: #a4a5b7; margin-top: 8px; }.launch-details dd { margin: 4px 0; color: #f4f2fa; white-space: pre-wrap; overflow-wrap: anywhere; }
+.result-state-unknown { color: #a99aff; }

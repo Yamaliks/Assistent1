@@ -1,3 +1,4 @@
+import { ActionResults } from './ActionResults';
 import { BriefcaseBusiness, Gamepad2, Headphones, Moon, Play, Settings2, type LucideIcon } from 'lucide-react';
 import type { Mode, ModeIcon, ModeRun } from '../domain/modes';
 import type { ModeProgress } from '../services/modeEngine';
@@ -7,6 +8,6 @@ export function ModeCard({ mode, onSelect, onRun, run }: { mode: Mode; onSelect:
   return <section className="mode-card"><span className={`mode-icon ${mode.icon}`}><Icon size={23} /></span><h3>{mode.name}</h3><p>{mode.description}</p>
     <div className="mode-card-buttons"><button className="primary" disabled={run?.status === 'running'} onClick={onRun}><Play size={16} />{run?.status === 'running' ? 'Запускается' : 'Запустить'}</button><button className="secondary" onClick={() => onSelect(mode)}><Settings2 size={16} />Настроить</button></div>
     <p className="field-help">{run ? run.status === 'running' ? `Сейчас: ${run.current}` : run.summary : `${mode.actions.length} действий`}</p>
-    {run && run.results.filter(result => result.status === 'error').map(result => <p className="form-error" key={result.actionId}>{result.name}: {result.message}</p>)}
+    {run && <details className="advanced"><summary>Результаты действий</summary><ActionResults results={run.results} /></details>}
   </section>;
 }

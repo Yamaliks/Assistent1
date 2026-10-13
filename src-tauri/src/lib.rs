@@ -6,9 +6,12 @@ use tauri::{
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 mod actions;
 mod applications;
+mod launch_types;
 mod launch_validation;
 mod process_identity;
 mod window_lifecycle;
+#[cfg(windows)]
+mod windows_launch;
 
 impl WindowOperations for tauri::WebviewWindow {
     fn show(&self) -> Result<(), String> {
