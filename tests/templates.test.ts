@@ -22,7 +22,10 @@ test('v1/v2/v3 existing modes, deleted recommendations and user sites are never 
     settings.modes[1].actions = [];
     const raw = JSON.stringify({ version, ...settings }); port.setItem(STORAGE_KEY, raw);
     const loaded = loadSettings(port); assert.equal(loaded.warning, undefined);
-    assert.deepEqual(loaded.settings.modes, settings.modes);
+    assert.deepEqual(loaded.settings.modes.slice(1), settings.modes.slice(1));
+    const migrated = loaded.settings.modes[0].actions[0];
+    assert.equal(migrated.id, 'user-site'); assert.equal(migrated.kind, 'site');
+    if (migrated.kind === 'site') assert.equal(loaded.settings.sites.find(site => site.id === migrated.siteId)?.url, 'https://twitch.tv');
     assert.equal(port.getItem(STORAGE_KEY), raw);
     loaded.settings.modes[0].actions = [];
     saveSettings(port, loaded.settings);
