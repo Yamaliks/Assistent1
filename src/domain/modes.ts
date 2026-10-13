@@ -15,12 +15,22 @@ export interface Mode {
   phrase: string;
   actions: ModeAction[];
 }
+export function modeTemplate(icon: ModeIcon, modeId: string): ModeAction[] {
+  const app = (id: string): ModeAction => ({ id: `${modeId}:${id}`, kind: 'application', label: '', applicationId: id, active: true });
+  if (icon === 'game') return ['steam', 'discord', 'vpn', 'browser'].map(app);
+  if (icon === 'work') return [app('browser'), app('telegram'), { id: `${modeId}:folder`, kind: 'folder', label: 'Рабочая папка', path: '', active: false }];
+  if (icon === 'rest') return [
+    { id: `${modeId}:youtube`, kind: 'website', label: 'YouTube', url: 'https://youtube.com', active: true },
+    app('telegram'), app('vpn'), { id: `${modeId}:music`, kind: 'website', label: 'Музыка', url: '', active: false },
+  ];
+  return []; // No supported night-specific actions yet.
+}
 // Examples describe intent; no installed programs or executable paths are assumed.
 export const defaultModes: Mode[] = [
-  { id: 'game', name: 'Игра', description: 'Время для следующего уровня', icon: 'game', phrase: 'Включи игровой режим', actions: [] },
-  { id: 'work', name: 'Работа', description: 'Всё для спокойной концентрации', icon: 'work', phrase: 'Включи рабочий режим', actions: [] },
-  { id: 'rest', name: 'Отдых', description: 'Сделайте паузу в своём ритме', icon: 'rest', phrase: 'Включи режим отдыха', actions: [] },
-  { id: 'night', name: 'Ночь', description: 'Тише, мягче, ближе ко сну', icon: 'night', phrase: 'Включи ночной режим', actions: [] },
+  { id: 'game', name: 'Игра', description: 'Время для следующего уровня', icon: 'game', phrase: 'Включи игровой режим', actions: modeTemplate('game', 'game') },
+  { id: 'work', name: 'Работа', description: 'Всё для спокойной концентрации', icon: 'work', phrase: 'Включи рабочий режим', actions: modeTemplate('work', 'work') },
+  { id: 'rest', name: 'Отдых', description: 'Сделайте паузу в своём ритме', icon: 'rest', phrase: 'Включи режим отдыха', actions: modeTemplate('rest', 'rest') },
+  { id: 'night', name: 'Ночь', description: 'Тише, мягче, ближе ко сну', icon: 'night', phrase: 'Включи ночной режим', actions: modeTemplate('night', 'night') },
 ];
 const isObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 function isAction(value: unknown): value is ModeAction {

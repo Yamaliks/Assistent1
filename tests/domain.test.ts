@@ -13,7 +13,8 @@ function memoryStorage() {
 }
 test('defaults do not assume installed applications; returned settings are independent', () => {
   assert.ok(isModeList(defaultModes));
-  assert.ok(defaultModes.every(mode => mode.actions.length === 0));
+  assert.ok(defaultModes.every(mode => mode.actions.every(action => action.kind !== 'program')));
+  assert.equal(defaultModes.find(mode => mode.id === 'night')?.actions.length, 0);
   const a = freshSettings(); a.modes[0].name = 'Changed';
   assert.equal(freshSettings().modes[0].name, 'Игра');
 });
