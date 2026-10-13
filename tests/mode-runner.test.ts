@@ -62,11 +62,11 @@ test('mode and final results persist together without changing IDs, restoring de
   const raw = JSON.stringify({ version: 4, ...saved, modes: [{ ...saved.modes[0], lastRun: { ...result, status: 'fake' } }] });
   port.setItem(STORAGE_KEY, raw); assert.ok(loadSettings(port).warning); assert.equal(port.getItem(STORAGE_KEY), raw);
 });
-test('missing references and default browser without URL are explained; disabled missing entries never execute', async () => {
+test('missing references are explained; default browser launches without URL and disabled entries never execute', async () => {
   const settings = freshSettings(); const mode = settings.modes[0]; let calls = 0;
   mode.actions = [{ id: 'app', kind: 'application', label: 'Удалено', applicationId: 'missing' }, { id: 'browser', kind: 'application', label: '', applicationId: 'browser' }, { id: 'command', kind: 'command', label: '', commandId: 'missing' }, { id: 'disabled', kind: 'application', label: '', applicationId: 'missing', active: false }];
   const runner = createModeRunner(createSystemServices(async () => { calls++; }));
   const result = await runner.run(mode, settings);
-  assert.equal(calls, 0); assert.deepEqual(result.results.map(item => item.status), ['error', 'error', 'error', 'skipped']);
-  assert.match(result.results[1].message, /действие сайта/); assert.equal(runner.isRunning(mode.id), false);
+  assert.equal(calls, 1); assert.deepEqual(result.results.map(item => item.status), ['error', 'success', 'error', 'skipped']);
+  assert.equal(result.results[1].status, 'success'); assert.equal(runner.isRunning(mode.id), false);
 });

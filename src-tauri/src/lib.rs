@@ -38,15 +38,26 @@ fn request_main(app: &tauri::AppHandle) {
     }
 }
 
-// Always reuse configured windows. No command ever creates another palette.
-#[tauri::command]
-fn show_palette(app: tauri::AppHandle) -> Result<(), String> {
+fn restore_palette(app: &tauri::AppHandle) -> Result<(), String> {
     let window = app
         .get_webview_window("palette")
         .ok_or("Palette window missing")?;
     window.center().map_err(|e| e.to_string())?;
-    window.show().map_err(|e| e.to_string())?;
-    window.set_focus().map_err(|e| e.to_string())
+    restore(&window)?;
+    window.emit("palette-focus", ()).map_err(|e| e.to_string())
+}
+
+// Native shortcut callbacks must not synchronously block the window event loop.
+#[tauri::command]
+fn show_palette(app: tauri::AppHandle) -> Result<(), String> {
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        if let Err(error) = restore_palette(&handle) {
+            eprintln!("Could not restore command palette: {error}");
+            let _ = handle.emit("palette-error", error);
+        }
+    })
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -56,7 +67,10 @@ fn show_main(app: tauri::AppHandle, page: Option<String>) -> Result<(), String> 
         .ok_or("Main window missing")?;
     restore(&window)?;
     if let Some(page) = page {
-        if !matches!(page.as_str(), "modes" | "settings" | "commands") {
+        if !matches!(
+            page.as_str(),
+            "modes" | "settings" | "commands" | "applications"
+        ) {
             return Err("Unsupported page".into());
         }
         window.emit("navigate", page).map_err(|e| e.to_string())?;

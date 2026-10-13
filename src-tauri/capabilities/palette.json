@@ -2,6 +2,16 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "command-palette",
   "description": "Palette may hide itself, drag its title region and request one validated Windows launch action.",
-  "windows": ["palette"],
-  "permissions": ["core:window:allow-hide", "core:window:allow-start-dragging", "allow-execute-action"]
+  "windows": [
+    "palette"
+  ],
+  "permissions": [
+    "core:window:allow-hide",
+    "core:window:allow-start-dragging",
+    "allow-execute-action",
+    "core:event:allow-emit",
+    "core:event:allow-emit-to",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten"
+  ]
 }
