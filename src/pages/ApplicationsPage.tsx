@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useId, useState, type FormEvent } from 'react';
 import { FolderOpen, Monitor } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import { applicationName, type ApplicationConfig } from '../domain/applications';
@@ -16,40 +16,59 @@ export function ApplicationsPage({ applications, onSave }: { applications: Appli
     })}
   </>;
 }
-export function ApplicationEditor({ app, name, onSave }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean }) {
+const appDescriptions: Record<string, string> = { steam: 'Игровая библиотека', discord: 'Общение', telegram: 'Сообщения', vpn: 'Запуск вашего VPN-приложения', browser: 'Интернет' };
+export function ApplicationEditor({ app, name, onSave, embedded = false }: { app: ApplicationConfig; name: string; onSave: (app: ApplicationConfig) => boolean; embedded?: boolean }) {
+  const inputId = useId();
   const [path, setPath] = useState(app.path);
   const [useDefault, setUseDefault] = useState(app.useDefaultBrowser);
+  const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [exists, setExists] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let disposed = false;
+    if (desktop && app.path) invoke('check_application_exe', { path: app.path })
+      .then(() => { if (!disposed) setExists(true); })
+      .catch(() => { if (!disposed) { setExists(false); setMessage('Файл не найден или недоступен. Выберите EXE заново.'); } });
+    return () => { disposed = true; };
+  }, [app.path]);
   const report = (error: unknown) => setMessage(error instanceof Error ? error.message : String(error));
+  async function persist(target: string, defaultBrowser: boolean) {
+    const nextPath = defaultBrowser ? '' : target.trim();
+    if (nextPath) {
+      const invalid = targetError('program', nextPath); if (invalid) throw new Error(invalid);
+      if (desktop) await invoke('check_application_exe', { path: nextPath });
+    }
+    if (onSave({ ...app, path: nextPath, useDefaultBrowser: defaultBrowser })) { setOpen(false); setMessage('Сохранено.'); }
+    else throw new Error('Не удалось сохранить путь.');
+  }
   async function choose() {
     setBusy(true); setMessage('');
-    try { const selected = await invoke<string | null>('pick_application_exe'); if (selected !== null) setPath(selected); }
-    catch (error) { report(error); }
+    try { const selected = await invoke<string | null>('pick_application_exe'); if (selected !== null) { setPath(selected); setUseDefault(false); await persist(selected, false); } }
+    catch (error) { report(error); setOpen(true); }
     finally { setBusy(false); }
-  }
-  async function check(target: string) {
-    const error = targetError('program', target);
-    if (error) throw new Error(error);
-    if (desktop) { await invoke('check_application_exe', { path: target }); setMessage('EXE найден.'); }
-    else setMessage('Формат пути корректен. Проверка существования доступна в Windows.');
   }
   async function submit(event: FormEvent) {
     event.preventDefault(); setBusy(true); setMessage('');
-    const target = useDefault ? '' : path.trim();
-    try { if (target) await check(target); onSave({ ...app, path: target, useDefaultBrowser: useDefault }); }
-    catch (error) { report(error); }
+    try { await persist(path, useDefault); } catch (error) { report(error); }
     finally { setBusy(false); }
   }
-  return <section className="panel"><div className="flex items-center gap-3 mb-4"><Monitor size={20} className="text-accent" /><h2>{name}</h2></div>
-    <p className="text-muted text-sm mb-4">{app.useDefaultBrowser ? 'Браузер по умолчанию' : app.path || 'Не настроено'}</p>
-    <form onSubmit={event => { void submit(event); }}>
-      {app.id === 'browser' && <label className="flex items-center gap-3 mb-4"><input className="w-auto" type="checkbox" checked={useDefault} disabled={busy} onChange={e => { setUseDefault(e.target.checked); setMessage(''); }} />Использовать браузер по умолчанию</label>}
-      <label className="text-muted text-sm" htmlFor={`app-${app.id}`}>Путь к EXE</label>
-      <div className="flex flex-wrap gap-2 mt-2"><input className="flex-1 min-w-48" id={`app-${app.id}`} value={path} disabled={busy || useDefault} placeholder="C:\Apps\App.exe" spellCheck={false} onChange={e => { setPath(e.target.value); setMessage(''); }} />
-        <button type="button" className="secondary" disabled={!desktop || busy || useDefault} onClick={() => { void choose(); }} aria-label={`Выбрать EXE для ${name}`}><FolderOpen size={16} />Выбрать EXE</button></div>
-      <div className="form-actions mt-4"><button type="button" className="secondary" disabled={busy || useDefault || !path.trim()} onClick={() => { setBusy(true); void check(path.trim()).catch(report).finally(() => setBusy(false)); }}>Проверить</button><button className="primary" disabled={busy}>Сохранить</button></div>
-      {message && <p className="mt-3 text-sm text-muted" role="status">{message}</p>}
-    </form>
-  </section>;
+  const ready = app.useDefaultBrowser || (!!app.path && exists !== false);
+  return <div className={embedded ? 'application-settings' : 'action-card'}>
+    {!embedded && <div className="action-title"><span className="mode-icon"><Monitor size={20} /></span><div><h3>{name}</h3><p>{appDescriptions[app.id] ?? 'Ваше приложение'}</p></div></div>}
+    {embedded && <p className="action-description">{appDescriptions[app.id] ?? 'Ваше приложение'}</p>}
+    <div className="action-config-row"><span className={`action-status ${ready ? 'ready' : ''}`}>{desktop && app.path && exists === null ? 'Проверяем файл…' : ready ? 'Готово' : 'Не настроено'}</span>
+      <span className="path-preview" title={app.path || undefined}>{app.useDefaultBrowser ? 'Браузер по умолчанию' : app.path ? app.path.split(/[\\/]/).pop() : 'Выберите установленное приложение'}</span>
+      {!app.path && !app.useDefaultBrowser && desktop && <button className="primary" disabled={busy} onClick={() => { void choose(); }}><FolderOpen size={16} />Выбрать EXE</button>}
+      <button className="secondary" disabled={busy} aria-expanded={open} onClick={() => setOpen(!open)}>{ready ? 'Изменить' : 'Ввести путь'}</button>
+    </div>
+    {open && <form className="action-edit-fields" onSubmit={event => { void submit(event); }}>
+      {app.id === 'browser' && <label className="checkbox-label"><input type="checkbox" checked={useDefault} disabled={busy} onChange={e => setUseDefault(e.target.checked)} />Использовать браузер по умолчанию</label>}
+      <label htmlFor={inputId}>Путь к приложению</label><div className="path-input-row"><input id={inputId} value={path} disabled={busy || useDefault} placeholder="Полный путь к EXE" spellCheck={false} onChange={e => { setPath(e.target.value); setMessage(''); }} />
+        <button type="button" className="secondary" disabled={!desktop || busy || useDefault} onClick={() => { void choose(); }}><FolderOpen size={16} />Выбрать EXE</button></div>
+      <p className="field-help">Путь общий для всех режимов. При выборе файла он сохраняется сразу.{!desktop && ' Проверка файла доступна в Windows.'}</p>
+      <div className="form-actions"><button type="button" className="secondary" disabled={busy} onClick={() => setOpen(false)}>Отмена</button><button className="primary" disabled={busy}>Сохранить путь</button></div>
+    </form>}
+    {message && <p className={exists === false ? 'form-error' : 'field-help'} role="status">{message}</p>}
+  </div>;
 }

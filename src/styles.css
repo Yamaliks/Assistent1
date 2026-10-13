@@ -116,3 +116,70 @@ input, select { background: #111218; border: 1px solid #333544; padding: 12px; c
 @media (max-width: 850px) { .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }.hero-art { display: none; }.palette-launch kbd { display: none; }.command-list > div { flex-wrap: wrap; }.sidebar { width: 176px; }.brand { font-size: 18px; gap: 8px; padding-left: 4px; }.topbar { padding: 0 24px; } }
 @media (max-width: 600px) { .sidebar { width: 64px; padding: 20px 8px; }.brand { justify-content: center; padding: 0 0 28px; }.brand > div, .nav-label, .nav-item span, .sidebar-bottom { display: none; }.nav-item { justify-content: center; padding: 12px 8px; }.main-content { padding: 20px 16px; }.topbar { padding: 0 16px; }.breadcrumb { display: none; }.palette-launch { margin-left: auto; }.hero { padding: 24px; }.hero h2 { font-size: 24px; }.hero-label { font-size: 8px; }.page-footer { flex-direction: column; }.settings-grid, .form-grid { grid-template-columns: 1fr; }.shortcut-card { flex-wrap: wrap; }.palette-modes { grid-template-columns: 1fr 1fr; }.palette-modes button { padding: 8px; gap: 8px; }.palette-modes button > svg { display: none; }.palette-header { padding: 12px; }.palette-footer { gap: 8px; padding: 12px; }.palette-drag { gap: 8px; }.desktop-break { display: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; }.mode-card:hover { transform: none; } }
+
+/* UX Lite: reuse Graphite Purple surfaces and controls. */
+h1 { font-size: 24px; letter-spacing: -.4px; }
+h2, h3 { font-weight: 500; }
+.eyebrow, .hero-label, .nav-label, .brand small { letter-spacing: .3px; font-size: 12px; }
+.primary, .secondary { min-height: 40px; padding: 8px 16px; font-size: 14px; }
+summary { cursor: pointer; border-radius: 8px; }
+summary:focus-visible { outline: 2px solid #a99aff; outline-offset: 4px; }
+.mode-card { border-color: transparent; padding: 20px; }
+.mode-card h3 { font-size: 18px; }
+.mode-card p, .card-footer { font-size: 12px; }
+.mode-card:hover { transform: none; }
+.mode-editor { max-width: 900px; margin: 0 auto; }
+.editor-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+.editor-intro { color: #a4a5b7; margin-bottom: 24px; font-size: 14px; }
+.action-stack { display: grid; gap: 16px; }
+.action-card { padding: 20px; background: #191b24; border: 1px solid transparent; border-radius: 16px; min-width: 0; margin-bottom: 16px; }
+.action-stack .action-card { margin: 0; }
+.action-card.inactive { border-color: #333544; }
+.action-card-header, .action-title, .action-controls { display: flex; align-items: center; gap: 16px; }
+.action-card-header { justify-content: space-between; margin-bottom: 12px; }
+.action-title { min-width: 0; }
+.action-title h3 { font-size: 18px; overflow-wrap: anywhere; }
+.action-title p, .action-title small { color: #a4a5b7; font-size: 13px; }
+.action-controls { flex-shrink: 0; gap: 20px; }
+.action-description { color: #a4a5b7; font-size: 13px; margin-bottom: 12px; }
+.action-config-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.action-status { display: inline-flex; align-items: center; font-size: 13px; color: #a4a5b7; white-space: nowrap; }
+.action-status.ready { color: #55c69a; }
+.path-preview { min-width: 80px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #a4a5b7; }
+.action-menu { position: relative; }
+.action-menu summary { display: flex; padding: 8px; color: #a4a5b7; list-style: none; }
+.action-menu summary::-webkit-details-marker { display: none; }
+.action-menu summary:hover { background: #242633; color: #f4f2fa; }
+.action-menu-items { position: absolute; right: 0; top: 44px; width: 220px; padding: 8px; z-index: 2; background: #242633; border: 1px solid #333544; border-radius: 12px; box-shadow: 0 8px 24px #0004; }
+.action-menu-items button { width: 100%; text-align: left; padding: 12px; display: flex; gap: 12px; align-items: center; font-size: 13px; }
+.action-menu-items button:hover:not(:disabled) { background: #333544; }
+.danger { color: #f17684; }
+.action-edit-fields { margin-top: 20px; padding-top: 20px; border-top: 1px solid #333544; }
+.action-edit-fields label, .advanced label { display: block; font-size: 13px; color: #a4a5b7; }
+.action-edit-fields input, .advanced input, .advanced select { margin-top: 8px; }
+.path-input-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.path-input-row input { min-width: 0; margin: 0; }
+.path-input-row button { flex-shrink: 0; }
+.checkbox-label { display: flex !important; align-items: center; gap: 12px; margin-bottom: 16px; }
+.checkbox-label input { width: 18px; height: 18px; margin: 0; accent-color: #a99aff; }
+.field-help { color: #a4a5b7; font-size: 12px; margin: 12px 0; overflow-wrap: anywhere; }
+.advanced { margin-top: 16px; font-size: 13px; color: #a4a5b7; }
+.advanced > summary { padding: 8px 0; }
+.advanced > label, .advanced > .form-grid { margin-top: 16px; }
+.new-application { display: flex; align-items: flex-end; gap: 12px; margin-top: 16px; }
+.new-application label { flex: 1; min-width: 0; }
+.new-application button { flex-shrink: 0; }
+.add-action-area { margin: 24px 0; }
+.add-action-button { width: 100%; border: 1px dashed #6151bb; background: transparent; color: #a99aff; }
+.action-type-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.action-type-picker .secondary { gap: 8px; }
+.mode-metadata { margin: 24px 0; }
+.editor-save { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 20px 0; border-top: 1px solid #333544; }
+.editor-save > span { font-size: 12px; color: #a4a5b7; }
+.confirmation { flex-direction: column; align-items: stretch; }
+.confirmation p { font-size: 14px; }
+.empty-actions h2 { margin-bottom: 8px; }
+.new-mode-picker { margin-top: 24px; }
+.new-mode-picker > summary { width: fit-content; }
+@media (max-width: 850px) { .action-type-picker { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .action-card { padding: 16px; }.path-input-row, .new-application { flex-direction: column; align-items: stretch; }.action-config-row .path-preview { flex-basis: calc(100% - 110px); }.action-config-row button { flex: 1; }.action-title h3 { font-size: 16px; }.action-controls { gap: 12px; }.editor-save .form-actions { width: 100%; }.editor-toolbar .text-button { font-size: 13px; }.action-type-picker { grid-template-columns: 1fr; } }

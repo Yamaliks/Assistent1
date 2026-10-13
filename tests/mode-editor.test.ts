@@ -53,6 +53,7 @@ test('command references follow edits and deletion removes only linked actions; 
 test('3A settings keep paths, commands, modes and empty lists; legacy inline EXEs migrate once to shared IDs', () => {
   const port = storage(); const settings = freshSettings();
   settings.applications[0].path = 'C:\\Steam\\Steam.exe';
+  settings.modes[2].actions = [];
   settings.modes[0].actions = [{ id: 'old', kind: 'program', label: 'Steam', path: 'C:\\Steam\\Steam.exe' }];
   settings.modes[1].actions = [{ id: 'custom', kind: 'program', label: 'Редактор', path: 'C:\\Apps\\Editor.exe' }];
   const raw = JSON.stringify({ version: 2, ...settings }); port.setItem(STORAGE_KEY, raw);
