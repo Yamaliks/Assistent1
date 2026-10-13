@@ -8,6 +8,15 @@ export type ModeAction = { active?: boolean } & (
   | { id: string; kind: 'folder'; label: string; path: string }
   | { id: string; kind: 'volume'; label: string; level: number }
   | { id: string; kind: 'night-light'; label: string; enabled: boolean });
+export interface ActionResult { actionId: string; name: string; status: 'success' | 'error' | 'skipped'; message: string }
+export interface ModeRun { modeId: string; finishedAt: string; status: 'ready' | 'errors'; summary: string; results: ActionResult[] }
+function isModeRun(value: unknown): value is ModeRun {
+  return isObject(value) && typeof value.modeId === 'string' && typeof value.finishedAt === 'string'
+    && Number.isFinite(Date.parse(value.finishedAt)) && ['ready', 'errors'].includes(String(value.status))
+    && typeof value.summary === 'string' && Array.isArray(value.results) && value.results.every(result => isObject(result)
+      && typeof result.actionId === 'string' && typeof result.name === 'string' && typeof result.message === 'string'
+      && ['success', 'error', 'skipped'].includes(String(result.status)));
+}
 export interface Mode {
   id: string;
   name: string;
@@ -15,6 +24,7 @@ export interface Mode {
   icon: ModeIcon;
   phrase: string;
   actions: ModeAction[];
+  lastRun?: ModeRun;
 }
 export function modeTemplate(icon: ModeIcon, modeId: string): ModeAction[] {
   const app = (id: string): ModeAction => ({ id: `${modeId}:${id}`, kind: 'application', label: '', applicationId: id, active: true });
@@ -52,6 +62,7 @@ export function isModeList(value: unknown): value is Mode[] {
     && typeof mode.id === 'string' && typeof mode.name === 'string'
     && typeof mode.description === 'string' && typeof mode.phrase === 'string'
     && ['game', 'work', 'rest', 'night'].includes(String(mode.icon))
+    && (mode.lastRun === undefined || (isModeRun(mode.lastRun) && mode.lastRun.modeId === mode.id))
     && Array.isArray(mode.actions) && mode.actions.every(isAction)
     && new Set(mode.actions.map(action => action.id)).size === mode.actions.length)
     && new Set(value.map(mode => mode.id)).size === value.length;
