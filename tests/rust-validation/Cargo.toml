@@ -9,6 +9,11 @@ path = "lib.rs"
 
 [dependencies]
 url = "2"
+serde = { version = "1", features = ["derive"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading", "Win32_Storage_FileSystem", "Win32_Security", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Dwm", "Win32_UI_Shell"] }
+
+[[bin]]
+name = "launch-fixture"
+path = "launch_fixture.rs"

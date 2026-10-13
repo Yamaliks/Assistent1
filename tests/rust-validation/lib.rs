@@ -5,3 +5,9 @@ pub mod window_lifecycle;
 
 #[path = "../../src-tauri/src/process_identity.rs"]
 pub mod process_identity;
+
+#[path = "../../src-tauri/src/launch_types.rs"]
+pub mod launch_types;
+#[cfg(windows)]
+#[path = "../../src-tauri/src/windows_launch.rs"]
+pub mod windows_launch;

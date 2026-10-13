@@ -1,3 +1,4 @@
+import { ActionResults } from '../components/ActionResults';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { emitTo, listen } from '@tauri-apps/api/event';
 import { ArrowRight, AudioLines, Globe, Monitor, Play, Search, X } from 'lucide-react';
@@ -29,7 +30,7 @@ export function Palette({ settings, runs, onRun, message, notify, reportError }:
     const app = settings.applications.find(app => app.id === item.id); if (!app) return;
 
     browserLock.current = true; setBrowserBusy(true);
-    try { const outcome = await systemServices.execute(app.useDefaultBrowser ? { id: app.id, kind: 'browser', label: item.name } : { id: app.id, kind: 'program', label: item.name, path: app.path }, false, app.useDefaultBrowser || (app.skipIfRunning ?? false)); notify(outcome === 'already-running' ? `«${item.name}»: уже работает.` : `«${item.name}»: запущено.`); }
+    try { const outcome = await systemServices.execute(app.useDefaultBrowser ? { id: app.id, kind: 'browser', label: item.name } : { id: app.id, kind: 'program', label: item.name, path: app.path }, false, app.useDefaultBrowser || (app.skipIfRunning ?? false)); notify(outcome.outcome === 'state-unknown' ? `«${item.name}»: ${outcome.message}` : outcome.outcome === 'already-running' ? `«${item.name}»: уже работает.` : `«${item.name}»: запущено.`); }
     catch (error) { reportError(error); } finally { browserLock.current = false; setBrowserBusy(false); }
   }
   function submit(event: FormEvent) {
@@ -46,7 +47,7 @@ export function Palette({ settings, runs, onRun, message, notify, reportError }:
       const run = mode ? runs[mode.id] ?? mode.lastRun : undefined;
       const command = item.kind === 'command' ? settings.commands.find(command => command.id === item.id) : undefined;
       const Icon = mode ? modeIcons[mode.icon] : command ? commandIcons[command.kind] : item.kind === 'site' ? Globe : Monitor;
-      return <div key={`${item.kind}:${item.id}`} className="palette-result"><button disabled={busy || run?.status === 'running'} onClick={() => { void launch(item); }} aria-label={`Запустить ${item.name}`}><span className="mode-icon"><Icon size={20} /></span><span><strong>{item.name}</strong><small>{run ? run.status === 'running' ? 'Запускается' : run.status === 'errors' ? 'Есть ошибки' : 'Готово' : { mode: 'Режим · Запустить', command: 'Команда', application: 'Приложение', site: 'Сайт' }[item.kind]}</small></span><Play size={15} /></button>{run && <div className="field-help">{run.status === 'running' ? `Сейчас: ${run.current}` : run.summary}{run.results.filter(result => result.status === 'error').map(result => <p className="form-error" key={result.actionId}>{result.name}: {result.message}</p>)}</div>}</div>;
+      return <div key={`${item.kind}:${item.id}`} className="palette-result"><button disabled={busy || run?.status === 'running'} onClick={() => { void launch(item); }} aria-label={`Запустить ${item.name}`}><span className="mode-icon"><Icon size={20} /></span><span><strong>{item.name}</strong><small>{run ? run.status === 'running' ? 'Запускается' : run.status === 'errors' ? 'Есть ошибки' : 'Готово' : { mode: 'Режим · Запустить', command: 'Команда', application: 'Приложение', site: 'Сайт' }[item.kind]}</small></span><Play size={15} /></button>{run && <div className="field-help">{run.status === 'running' ? `Сейчас: ${run.current}` : run.summary}<details><summary>Результаты действий</summary><ActionResults results={run.results} /></details></div>}</div>;
     })}</div>{!items.length && <p className="palette-hint">Ничего не найдено.</p>}{message && <p className="palette-message" role="status">{message}</p>}</div>
     <footer className="palette-footer"><span>{busy ? 'Запускается' : 'Enter — запустить'}</span><button className="text-button" onClick={() => { void showMain().then(hidePalette).catch(reportError); }}>Главное окно<ArrowRight size={14} /></button><kbd>Esc</kbd></footer></div>;
 }

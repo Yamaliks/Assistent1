@@ -9,14 +9,22 @@ export type ModeAction = { active?: boolean } & (
   | { id: string; kind: 'folder'; label: string; path: string }
   | { id: string; kind: 'volume'; label: string; level: number }
   | { id: string; kind: 'night-light'; label: string; enabled: boolean });
-export interface ActionResult { actionId: string; name: string; status: 'success' | 'already-running' | 'error' | 'skipped'; message: string }
+export interface LaunchDetails { libraryId?: string; path?: string | null; canonicalPath?: string | null; inspection?: string | null; pids?: number[]; windowCount?: number | null; windowsError?: number | null; minimizedRequested?: boolean }
+function validDetails(value: unknown): boolean {
+  return isObject(value) && ['libraryId', 'path', 'canonicalPath', 'inspection'].every(key => value[key] === undefined || value[key] === null || typeof value[key] === 'string')
+    && (value.pids === undefined || (Array.isArray(value.pids) && value.pids.every(pid => Number.isInteger(pid) && pid >= 0)))
+    && (value.windowCount === undefined || value.windowCount === null || (typeof value.windowCount === 'number' && Number.isInteger(value.windowCount) && value.windowCount >= 0))
+    && (value.windowsError === undefined || value.windowsError === null || (typeof value.windowsError === 'number' && Number.isInteger(value.windowsError)))
+    && (value.minimizedRequested === undefined || typeof value.minimizedRequested === 'boolean');
+}
+export interface ActionResult { actionId: string; name: string; status: 'success' | 'already-running' | 'state-unknown' | 'error' | 'skipped'; message: string; details?: LaunchDetails }
 export interface ModeRun { modeId: string; finishedAt: string; status: 'ready' | 'errors'; summary: string; results: ActionResult[] }
 function isModeRun(value: unknown): value is ModeRun {
   return isObject(value) && typeof value.modeId === 'string' && typeof value.finishedAt === 'string'
     && Number.isFinite(Date.parse(value.finishedAt)) && ['ready', 'errors'].includes(String(value.status))
     && typeof value.summary === 'string' && Array.isArray(value.results) && value.results.every(result => isObject(result)
       && typeof result.actionId === 'string' && typeof result.name === 'string' && typeof result.message === 'string'
-      && ['success', 'already-running', 'error', 'skipped'].includes(String(result.status)));
+      && (result.details === undefined || validDetails(result.details)) && ['success', 'already-running', 'state-unknown', 'error', 'skipped'].includes(String(result.status)));
 }
 export interface Mode {
   id: string;
