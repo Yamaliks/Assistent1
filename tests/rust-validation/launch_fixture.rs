@@ -39,10 +39,12 @@ fn main() {
     }
     let minimized = !window.is_null() && unsafe { IsIconic(window) } != 0;
     std::fs::write(
-        "fixture.ready",
+        "fixture.ready.tmp",
         format!("{}:{minimized}", std::process::id()),
     )
     .unwrap();
+    // File existence is the readiness signal; do not expose a partially written PID/state.
+    std::fs::rename("fixture.ready.tmp", "fixture.ready").unwrap();
     let started = std::time::Instant::now();
     while !std::path::Path::new("fixture.stop").exists()
         && started.elapsed() < std::time::Duration::from_secs(30)
