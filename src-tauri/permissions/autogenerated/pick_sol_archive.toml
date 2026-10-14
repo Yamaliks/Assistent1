@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-pick-sol-archive"
+description = "Enables the pick_sol_archive command without any pre-configured scope."
+commands.allow = ["pick_sol_archive"]
+
+[[permission]]
+identifier = "deny-pick-sol-archive"
+description = "Denies the pick_sol_archive command without any pre-configured scope."
+commands.deny = ["pick_sol_archive"]

@@ -12,6 +12,15 @@
     "allow-check-application-exe",
     "allow-pick-application-exe",
     "core:event:allow-emit",
-    "core:event:allow-emit-to"
+    "core:event:allow-emit-to",
+    "allow-prepare-mode-switch",
+    "allow-confirm-mode-switch",
+    "allow-sol-asset-status",
+    "allow-sol-install",
+    "allow-sol-audio",
+    "allow-sol-start",
+    "allow-sol-feed",
+    "allow-sol-stop",
+    "allow-pick-sol-archive"
   ]
 }

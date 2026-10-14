@@ -5,8 +5,8 @@ fn main() {}
 #[cfg(windows)]
 fn main() {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        CreateWindowExW, DestroyWindow, DispatchMessageW, IsIconic, PeekMessageW, ShowWindow,
-        TranslateMessage, MSG, PM_REMOVE, SW_SHOW, WS_OVERLAPPEDWINDOW,
+        CreateWindowExW, DestroyWindow, DispatchMessageW, IsIconic, IsWindow, PeekMessageW,
+        ShowWindow, TranslateMessage, MSG, PM_REMOVE, SW_SHOW, WS_OVERLAPPEDWINDOW,
     };
     let mode = std::fs::read_to_string("fixture.mode").unwrap_or_else(|_| "visible".into());
     let mut window = std::ptr::null_mut();
@@ -55,6 +55,9 @@ fn main() {
                 TranslateMessage(&message);
                 DispatchMessageW(&message);
             }
+        }
+        if mode.trim() == "close-exits" && !window.is_null() && unsafe { IsWindow(window) } == 0 {
+            break;
         }
         std::thread::sleep(std::time::Duration::from_millis(10));
     }

@@ -220,7 +220,7 @@ fn shell_open(
 }
 
 #[cfg(windows)]
-fn default_browser_exe() -> Result<String, LaunchFailure> {
+pub(crate) fn default_browser_exe() -> Result<String, LaunchFailure> {
     use windows_sys::Win32::UI::Shell::{
         AssocQueryStringW, ASSOCF_NOTRUNCATE, ASSOCSTR_EXECUTABLE,
     };

@@ -1,5 +1,5 @@
 import type { ActionResult } from '../domain/modes';
-const labels = { success: 'Запущено', 'already-running': 'Уже работает', skipped: 'Пропущено', 'state-unknown': 'Не удалось определить состояние', error: 'Ошибка запуска' };
+const labels = { success: 'Выполнено', 'already-running': 'Уже работает', skipped: 'Пропущено', 'state-unknown': 'Не удалось определить состояние', error: 'Ошибка' };
 export function ActionResults({ results }: { results: ActionResult[] }) {
   return <ul className="action-results">{results.map(result => <li key={result.actionId}><span>{result.name}</span><span className={`result-${result.status}`}>{labels[result.status]}</span><small>{result.message}</small>
     {result.details && (result.details.libraryId || result.details.path || result.details.canonicalPath || result.details.inspection || result.details.pids?.length || result.details.windowsError != null || result.details.minimizedRequested) && <details className="launch-details"><summary>Подробнее</summary><dl>

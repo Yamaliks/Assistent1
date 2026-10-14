@@ -8,7 +8,12 @@ mod actions;
 mod applications;
 mod launch_types;
 mod launch_validation;
+mod mode_switch;
+mod mode_switch_commands;
 mod process_identity;
+mod sol_asset_commands;
+mod sol_assets;
+mod voice;
 mod window_lifecycle;
 #[cfg(windows)]
 mod windows_launch;
@@ -73,7 +78,7 @@ fn show_main(app: tauri::AppHandle, page: Option<String>) -> Result<(), String> 
     if let Some(page) = page {
         if !matches!(
             page.as_str(),
-            "modes" | "settings" | "commands" | "applications"
+            "modes" | "settings" | "commands" | "applications" | "voice"
         ) {
             return Err("Unsupported page".into());
         }
@@ -158,6 +163,10 @@ pub fn run() {
                 if matches!(window.label(), "main" | "palette") {
                     // Prevent destruction first; both configured windows remain reusable.
                     api.prevent_close();
+                    if window.label() == "main" {
+                        let _ = window.emit("sol-stop", ());
+                        tauri::async_runtime::spawn_blocking(voice::stop_all);
+                    }
                     if let Some(webview) = window.app_handle().get_webview_window(window.label()) {
                         if let Err(error) = close_to_tray(&webview) {
                             eprintln!("Could not hide window to tray: {error}");
@@ -171,7 +180,16 @@ pub fn run() {
             show_main,
             actions::execute_action,
             applications::check_application_exe,
-            applications::pick_application_exe
+            applications::pick_application_exe,
+            applications::pick_sol_archive,
+            mode_switch_commands::prepare_mode_switch,
+            mode_switch_commands::confirm_mode_switch,
+            sol_asset_commands::sol_asset_status,
+            sol_asset_commands::sol_install,
+            sol_asset_commands::sol_audio,
+            voice::sol_start,
+            voice::sol_feed,
+            voice::sol_stop
         ])
         .run(tauri::generate_context!())
         .expect("Unable to start Assistent1");

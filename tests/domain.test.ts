@@ -5,7 +5,7 @@ import { freshSettings, loadSettings, saveSettings, STORAGE_KEY } from '../src/s
 import { routeCommand } from '../src/services/commandRouter.ts';
 import { planMode } from '../src/services/modeEngine.ts';
 import { systemServices } from '../src/services/systemServices.ts';
-import { voiceService } from '../src/services/voiceService.ts';
+import { createVoiceCapture } from '../src/services/voiceService.ts';
 
 function memoryStorage() {
   const values = new Map<string, string>();
@@ -44,9 +44,10 @@ test('router recognizes Russian names and phrases but rejects executable command
   assert.deepEqual(routeCommand('настройки', defaultModes), { kind: 'navigate', page: 'settings' });
   for (const input of ['', 'cmd /c shutdown /s', 'Игра && calc.exe']) assert.deepEqual(routeCommand(input, defaultModes), { kind: 'unknown' });
 });
-test('browser cannot execute system actions; voice is unavailable and close requests cancel', async () => {
+test('browser cannot execute system actions; missing microphone capture reports an error and close requests cancel', async () => {
   assert.equal(planMode(defaultModes[0]).executable, false);
   await assert.rejects(systemServices.execute({ id: 'x', kind: 'website', label: 'Example', url: 'https://example.com' }));
   assert.equal(await systemServices.requestProgramClose('example.exe'), 'cancelled');
-  assert.equal(voiceService.status, 'unavailable'); await assert.rejects(voiceService.start());
+  const states: string[] = []; const capture = createVoiceCapture(status => states.push(status), async () => {});
+  await capture.start('', false); assert.equal(states.at(-1), 'error'); await capture.stop();
 });

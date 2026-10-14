@@ -4,6 +4,15 @@ fn main() {
             "execute_action",
             "check_application_exe",
             "pick_application_exe",
+            "prepare_mode_switch",
+            "confirm_mode_switch",
+            "sol_asset_status",
+            "sol_install",
+            "sol_audio",
+            "sol_start",
+            "sol_feed",
+            "sol_stop",
+            "pick_sol_archive",
         ]),
     ))
     .expect("Failed to build Tauri permissions and resources");

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sol-install"
+description = "Enables the sol_install command without any pre-configured scope."
+commands.allow = ["sol_install"]
+
+[[permission]]
+identifier = "deny-sol-install"
+description = "Denies the sol_install command without any pre-configured scope."
+commands.deny = ["sol_install"]

@@ -192,3 +192,68 @@ fn real_startupinfo_minimized_launch_and_missing_exe_diagnostics() {
     assert_eq!(error.details.path.as_deref(), Some(missing.as_str()));
     assert!(error.details.windows_error.is_some());
 }
+
+#[test]
+fn real_mode_switch_keeps_shared_apps_and_only_posts_close_after_selection() {
+    use assistent1_launch_validation_tests::mode_switch::{finish, prepare, Target};
+    let _serial = FIXTURE_TEST.lock().unwrap_or_else(|e| e.into_inner());
+    let app = Fixture::new("visible");
+    let launched = execute(LaunchAction::Program {
+        target: app.path().into(),
+        minimized: false,
+        skip_if_running: false,
+    })
+    .unwrap();
+    assert_eq!(launched.outcome, LaunchOutcome::Launched, "{launched:#?}");
+    app.wait_ready();
+    wait_state(app.path(), RunningState::AlreadyRunning);
+    let target = Target {
+        id: "user-app".into(),
+        name: "Cooperative test app".into(),
+        path: app.path().into(),
+    };
+    let shared = prepare(vec![target.clone()], vec![target.clone()]).unwrap();
+    assert!(shared.candidates.is_empty());
+    finish(shared.token, vec![]).unwrap();
+    assert_state(app.path(), RunningState::AlreadyRunning);
+    let keep = prepare(vec![target.clone()], vec![]).unwrap();
+    assert_eq!(keep.candidates.len(), 1);
+    // Cancel/keep-all sends no WM_CLOSE at all, and invalid selection cannot close anything.
+    assert!(finish(keep.token.clone(), vec!["not-in-previous-mode".into()]).is_err());
+    finish(keep.token, vec![]).unwrap();
+    assert_state(app.path(), RunningState::AlreadyRunning);
+    let close = prepare(vec![target], vec![]).unwrap();
+    let results = finish(close.token, vec!["user-app".into()]).unwrap();
+    assert_eq!(results.len(), 1);
+    assert!(
+        !results[0].closed,
+        "A surviving background process must not be reported as closed"
+    );
+    assert!(results[0].message.contains("процесс"));
+    // WM_CLOSE destroyed the window; the cooperative process remains alive. No termination API.
+    wait_state(app.path(), RunningState::BackgroundOnly);
+    app.stop();
+    wait_state(app.path(), RunningState::NotRunning);
+
+    let ordinary = Fixture::new("close-exits");
+    execute(LaunchAction::Program {
+        target: ordinary.path().into(),
+        minimized: false,
+        skip_if_running: false,
+    })
+    .unwrap();
+    ordinary.wait_ready();
+    wait_state(ordinary.path(), RunningState::AlreadyRunning);
+    let plan = prepare(
+        vec![Target {
+            id: "ordinary".into(),
+            name: "Normal close fixture".into(),
+            path: ordinary.path().into(),
+        }],
+        vec![],
+    )
+    .unwrap();
+    let results = finish(plan.token, vec!["ordinary".into()]).unwrap();
+    assert!(results[0].closed, "{}", results[0].message);
+    wait_state(ordinary.path(), RunningState::NotRunning);
+}

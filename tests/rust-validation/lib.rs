@@ -11,3 +11,8 @@ pub mod launch_types;
 #[cfg(windows)]
 #[path = "../../src-tauri/src/windows_launch.rs"]
 pub mod windows_launch;
+
+#[path = "../../src-tauri/src/mode_switch.rs"]
+pub mod mode_switch;
+#[path = "../../src-tauri/src/sol_assets.rs"]
+pub mod sol_assets;

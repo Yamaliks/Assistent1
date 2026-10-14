@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sol-start"
+description = "Enables the sol_start command without any pre-configured scope."
+commands.allow = ["sol_start"]
+
+[[permission]]
+identifier = "deny-sol-start"
+description = "Denies the sol_start command without any pre-configured scope."
+commands.deny = ["sol_start"]

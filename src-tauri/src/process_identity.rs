@@ -165,6 +165,9 @@ mod native {
         }
         1
     }
+    pub fn same_file(left: &str, right: &str) -> bool {
+        matches!((file_key(left), file_key(right)), (Ok(a), Ok(b)) if a == b)
+    }
     pub fn inspect(target: &str) -> Inspection {
         let mut unknown = false;
         let mut error = None;
@@ -363,7 +366,7 @@ mod native {
     }
 }
 #[cfg(windows)]
-pub use native::inspect;
+pub use native::{inspect, same_file};
 #[cfg(test)]
 mod tests {
     use super::*;

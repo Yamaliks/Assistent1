@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sol-asset-status"
+description = "Enables the sol_asset_status command without any pre-configured scope."
+commands.allow = ["sol_asset_status"]
+
+[[permission]]
+identifier = "deny-sol-asset-status"
+description = "Denies the sol_asset_status command without any pre-configured scope."
+commands.deny = ["sol_asset_status"]

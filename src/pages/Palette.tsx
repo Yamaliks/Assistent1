@@ -1,3 +1,4 @@
+import type { SolState } from '../services/useSol';
 import { ActionResults } from '../components/ActionResults';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { emitTo, listen } from '@tauri-apps/api/event';
@@ -12,13 +13,13 @@ import { useCommandExecution } from '../services/useCommandExecution';
 import { systemServices } from '../services/systemServices';
 import { routeCommand } from '../services/commandRouter';
 import { desktop, hidePalette, showMain } from '../services/windows';
-export function Palette({ settings, runs, onRun, message, notify, reportError }: { settings: Settings; runs: ModeStates; onRun: (id: string) => void; message: string; notify: (message: string) => void; reportError: (error: unknown) => void }) {
+export function Palette({ sol, onStopSol, settings, runs, onRun, message, notify, reportError }: { sol: SolState; onStopSol: () => void; settings: Settings; runs: ModeStates; onRun: (id: string) => void; message: string; notify: (message: string) => void; reportError: (error: unknown) => void }) {
   const [query, setQuery] = useState(''); const input = useRef<HTMLInputElement>(null); const browserLock = useRef(false); const [browserBusy, setBrowserBusy] = useState(false);
   const execution = useCommandExecution(notify, settings.applications); const busy = execution.busy || browserBusy;
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') void hidePalette().catch(reportError); };
     window.addEventListener('keydown', onKey); let disposed = false; const cleanups: (() => void)[] = [];
-    if (desktop) for (const registration of [listen('palette-focus', () => { input.current?.focus(); input.current?.select(); void emitTo('main', 'mode-status-request').catch(reportError); }), listen<string>('palette-error', event => notify(event.payload))]) void registration.then(cleanup => { if (disposed) cleanup(); else cleanups.push(cleanup); }).catch(reportError);
+    if (desktop) for (const registration of [listen('switch-prompt', () => { void hidePalette().catch(reportError); }), listen('palette-focus', () => { input.current?.focus(); input.current?.select(); void emitTo('main', 'mode-status-request').catch(reportError); }), listen<string>('palette-error', event => notify(event.payload))]) void registration.then(cleanup => { if (disposed) cleanup(); else cleanups.push(cleanup); }).catch(reportError);
     return () => { disposed = true; cleanups.forEach(cleanup => cleanup()); window.removeEventListener('keydown', onKey); };
   }, [notify, reportError]);
   const items = searchPalette(settings, query);
@@ -42,7 +43,7 @@ export function Palette({ settings, runs, onRun, message, notify, reportError }:
   }
   return <div className="palette-shell"><header className="palette-header"><div className="palette-drag" data-tauri-drag-region><span className="brand-mark small"><AudioLines size={18} /></span><strong>Assistent1</strong></div><button className="icon-button" aria-label="Скрыть панель" onClick={() => { void hidePalette().catch(reportError); }}><X size={18} /></button></header>
     <form className="palette-input" onSubmit={submit}><Search size={20} /><input ref={input} autoFocus aria-label="Поиск режимов, команд, приложений и сайтов" placeholder="Что хотите открыть?" value={query} onChange={e => setQuery(e.target.value)} /><button className="icon-button" aria-label="Запустить выбранное"><Play size={18} /></button></form>
-    <div className="palette-body"><div className="palette-modes">{items.map(item => {
+    <div className="palette-body"><div className="sol-indicator"><button className="text-button" onClick={() => { void showMain('voice').then(hidePalette).catch(reportError); }}>SOL · {sol.status === 'off' ? 'Настроить голос' : sol.status === 'listening' ? 'Микрофон активен' : sol.status === 'error' ? 'Ошибка' : 'Обработка'}</button>{sol.status !== 'off' && <button className="secondary" onClick={onStopSol}>Стоп</button>}</div>{sol.phrase && <p className="palette-hint">SOL: {sol.phrase} · {sol.message}</p>}<div className="palette-modes">{items.map(item => {
       const mode = item.kind === 'mode' ? settings.modes.find(mode => mode.id === item.id) : undefined;
       const run = mode ? runs[mode.id] ?? mode.lastRun : undefined;
       const command = item.kind === 'command' ? settings.commands.find(command => command.id === item.id) : undefined;

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sol-stop"
+description = "Enables the sol_stop command without any pre-configured scope."
+commands.allow = ["sol_stop"]
+
+[[permission]]
+identifier = "deny-sol-stop"
+description = "Denies the sol_stop command without any pre-configured scope."
+commands.deny = ["sol_stop"]

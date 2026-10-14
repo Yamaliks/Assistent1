@@ -213,3 +213,10 @@ summary:focus-visible { outline: 2px solid #a99aff; outline-offset: 4px; }
 .action-results small, .launch-details { width: 100%; color: #a4a5b7; font-size: 12px; overflow-wrap: anywhere; }
 .launch-details summary { color: #a99aff; padding: 4px 0; }.launch-details dl { margin: 12px 0; }.launch-details dt { color: #a4a5b7; margin-top: 8px; }.launch-details dd { margin: 4px 0; color: #f4f2fa; white-space: pre-wrap; overflow-wrap: anywhere; }
 .result-state-unknown { color: #a99aff; }
+/* SOL and switch confirmation reuse existing Graphite Purple surfaces. */
+.modal-backdrop { position: fixed; inset: 0; z-index: 40; background: #090a11bb; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.sol-dialog { width: min(100%, 620px); max-height: 85vh; overflow: auto; margin: 0; box-shadow: 0 20px 80px #0006; }
+.sol-dialog .setting-row { flex-wrap: wrap; gap: 16px; }.sol-dialog select { width: auto; min-width: 140px; }
+.sol-page .panel > h2 { margin-bottom: 20px; }.sol-page label { display: block; color: #a4a5b7; font-size: 14px; margin-top: 16px; }.sol-page input, .sol-page select { margin-top: 8px; }.sol-page input[type=range] { width: 100%; accent-color: #a99aff; }.sol-page h2 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sol-transcript { padding: 20px; margin-top: 24px; background: #111218; border-radius: 12px; overflow-wrap: anywhere; }.sol-transcript small { color: #a4a5b7; }.sol-transcript p { margin: 12px 0 0; }
+.sol-indicator { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; color: #a99aff; }.sol-indicator span { flex: 1; }.sol-page .setting-row { flex-wrap: wrap; gap: 16px; }.sol-page .checkbox-label input { margin-top: 0; }
