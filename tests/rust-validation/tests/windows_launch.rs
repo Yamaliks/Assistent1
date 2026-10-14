@@ -6,8 +6,32 @@ use assistent1_launch_validation_tests::{
 };
 use std::{
     path::{Path, PathBuf},
+    sync::Mutex,
     time::{Duration, Instant},
 };
+// Cargo runs tests concurrently by default (including in CI). Every test intentionally uses
+// same-name.exe to exercise file identity. Starting/stopping another test's same-named child
+// would introduce genuinely uncertain candidates into an otherwise unrelated assertion.
+static FIXTURE_TEST: Mutex<()> = Mutex::new(());
+
+fn assert_state(target: &str, expected: RunningState) {
+    let check = inspect(target);
+    assert_eq!(check.state, expected, "EXE {target}: {check:#?}");
+}
+fn wait_state(target: &str, expected: RunningState) {
+    let start = Instant::now();
+    loop {
+        let check = inspect(target);
+        if check.state == expected {
+            return;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(8),
+            "Waiting for {expected:?}, EXE {target}: {check:#?}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
 struct Fixture {
     dir: PathBuf,
     exe: PathBuf,
@@ -78,72 +102,63 @@ fn wait_for(condition: impl Fn() -> bool) {
 }
 #[test]
 fn real_closed_visible_and_same_name_other_directory() {
+    let _serial = FIXTURE_TEST.lock().unwrap_or_else(|e| e.into_inner());
     let visible = Fixture::new("visible");
     let other = Fixture::new("visible");
-    assert_eq!(inspect(visible.path()).state, RunningState::NotRunning);
+    assert_state(visible.path(), RunningState::NotRunning);
     let started = execute(LaunchAction::Program {
         target: visible.path().into(),
         minimized: false,
         skip_if_running: true,
     })
     .unwrap();
-    assert_eq!(started.outcome, LaunchOutcome::Launched);
+    assert_eq!(started.outcome, LaunchOutcome::Launched, "{started:#?}");
     visible.wait_ready();
-    wait_for(|| inspect(visible.path()).state == RunningState::AlreadyRunning);
-    assert_eq!(
-        inspect(other.path()).state,
-        RunningState::NotRunning,
-        "A file name alone must not match another EXE"
-    );
+    wait_state(visible.path(), RunningState::AlreadyRunning);
+    assert_state(other.path(), RunningState::NotRunning);
     let again = execute(LaunchAction::Program {
         target: visible.path().into(),
         minimized: false,
         skip_if_running: true,
     })
     .unwrap();
-    assert_eq!(again.outcome, LaunchOutcome::AlreadyRunning);
+    assert_eq!(again.outcome, LaunchOutcome::AlreadyRunning, "{again:#?}");
     let case_and_separators = visible.path().replace('\\', "/").to_ascii_uppercase();
-    assert_eq!(
-        inspect(&case_and_separators).state,
-        RunningState::AlreadyRunning
-    );
+    assert_state(&case_and_separators, RunningState::AlreadyRunning);
     // A hard-link alias has a different name but the same volume/file identity.
     let alias = visible.dir.join("alias.exe");
     std::fs::hard_link(&visible.exe, &alias).unwrap();
-    assert_eq!(
-        inspect(alias.to_str().unwrap()).state,
-        RunningState::AlreadyRunning
-    );
+    assert_state(alias.to_str().unwrap(), RunningState::AlreadyRunning);
     visible.stop();
-    wait_for(|| inspect(visible.path()).state == RunningState::NotRunning);
+    wait_state(visible.path(), RunningState::NotRunning);
     assert!(!Path::new(visible.path()).as_os_str().is_empty());
 }
 #[test]
 fn real_background_process_is_not_a_usable_application_window() {
+    let _serial = FIXTURE_TEST.lock().unwrap_or_else(|e| e.into_inner());
     let background = Fixture::new("background");
-    execute(LaunchAction::Program {
+    let started = execute(LaunchAction::Program {
         target: background.path().into(),
         minimized: false,
         skip_if_running: true,
     })
     .unwrap();
+    assert_eq!(started.outcome, LaunchOutcome::Launched, "{started:#?}");
     background.wait_ready();
-    assert_eq!(
-        inspect(background.path()).state,
-        RunningState::BackgroundOnly
-    );
+    assert_state(background.path(), RunningState::BackgroundOnly);
     let again = execute(LaunchAction::Program {
         target: background.path().into(),
         minimized: false,
         skip_if_running: true,
     })
     .unwrap();
-    assert_eq!(again.outcome, LaunchOutcome::StateUnknown);
-    assert!(again.details.window_count == Some(0));
+    assert_eq!(again.outcome, LaunchOutcome::StateUnknown, "{again:#?}");
+    assert_eq!(again.details.window_count, Some(0), "{again:#?}");
     background.stop();
 }
 #[test]
 fn real_startupinfo_minimized_launch_and_missing_exe_diagnostics() {
+    let _serial = FIXTURE_TEST.lock().unwrap_or_else(|e| e.into_inner());
     let minimized = Fixture::new("visible");
     let result = execute(LaunchAction::Program {
         target: minimized.path().into(),
@@ -151,14 +166,14 @@ fn real_startupinfo_minimized_launch_and_missing_exe_diagnostics() {
         skip_if_running: false,
     })
     .unwrap();
-    assert_eq!(result.outcome, LaunchOutcome::Launched);
+    assert_eq!(result.outcome, LaunchOutcome::Launched, "{result:#?}");
     minimized.wait_ready();
     let ready = std::fs::read_to_string(minimized.dir.join("fixture.ready")).unwrap();
     assert!(
         ready.ends_with(":true"),
         "Fixture honors STARTUPINFO: {ready}"
     );
-    wait_for(|| inspect(minimized.path()).state == RunningState::AlreadyRunning);
+    wait_state(minimized.path(), RunningState::AlreadyRunning);
     assert!(result.details.minimized_requested);
     assert_eq!(result.details.path.as_deref(), Some(minimized.path()));
     minimized.stop();

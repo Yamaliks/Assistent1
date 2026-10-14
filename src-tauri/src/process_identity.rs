@@ -30,7 +30,8 @@ mod native {
     use super::*;
     use windows_sys::Win32::{
         Foundation::{
-            CloseHandle, GetLastError, ERROR_NO_MORE_FILES, HANDLE, INVALID_HANDLE_VALUE, RECT,
+            CloseHandle, GetLastError, ERROR_INVALID_PARAMETER, ERROR_NO_MORE_FILES, HANDLE,
+            INVALID_HANDLE_VALUE, RECT,
         },
         Graphics::Dwm::{DwmGetWindowAttribute, DWMWA_CLOAKED},
         Storage::FileSystem::{
@@ -167,6 +168,7 @@ mod native {
     pub fn inspect(target: &str) -> Inspection {
         let mut unknown = false;
         let mut error = None;
+        let mut uncertainty = None;
         let mut matches = Vec::new();
         let target_key = match file_key(target) {
             Ok(key) => key,
@@ -228,9 +230,13 @@ mod native {
                     OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, entry.th32ProcessID)
                 };
                 if raw.is_null() {
-                    if named_candidate {
+                    let code = unsafe { GetLastError() };
+                    // Snapshot entries can disappear before OpenProcess. ERROR_INVALID_PARAMETER
+                    // for a nonzero snapshot PID means it no longer exists, not access denied.
+                    if named_candidate && code != ERROR_INVALID_PARAMETER {
                         unknown = true;
-                        error = Some(unsafe { GetLastError() });
+                        error = Some(code);
+                        uncertainty = Some(format!("OpenProcess, PID {}", entry.th32ProcessID));
                     }
                 } else {
                     let process = OwnedHandle(raw);
@@ -239,38 +245,46 @@ mod native {
                         if named_candidate {
                             unknown = true;
                             error = Some(unsafe { GetLastError() });
+                            uncertainty =
+                                Some(format!("GetExitCodeProcess, PID {}", entry.th32ProcessID));
                         }
                     } else if code == 259 {
                         let mut buffer = vec![0u16; 32768];
                         let mut size = buffer.len() as u32;
-                        if unsafe {
+                        let query = unsafe {
                             QueryFullProcessImageNameW(process.0, 0, buffer.as_mut_ptr(), &mut size)
-                        } == 0
-                        {
-                            if named_candidate {
-                                unknown = true;
-                                error = Some(unsafe { GetLastError() });
-                            }
+                        };
+                        let identity = if query == 0 {
+                            Err((
+                                "QueryFullProcessImageNameW",
+                                Some(unsafe { GetLastError() }),
+                            ))
                         } else {
                             match String::from_utf16(&buffer[..size as usize]) {
-                                Ok(path) => match file_key(&path) {
-                                    Ok(key) if key == target_key => {
-                                        matches.push((entry.th32ProcessID, process))
-                                    }
-                                    Ok(_) => {}
-                                    Err(code) => {
-                                        if named_candidate {
-                                            unknown = true;
-                                            error = code;
-                                        }
-                                    }
-                                },
-                                Err(_) => {
-                                    if named_candidate {
-                                        unknown = true;
-                                    }
+                                Ok(path) => file_key(&path).map_err(|code| ("file identity", code)),
+                                Err(_) => Err(("UTF-16 process path", None)),
+                            }
+                        };
+                        match identity {
+                            Ok(key) if key == target_key => {
+                                matches.push((entry.th32ProcessID, process))
+                            }
+                            Ok(_) => {}
+                            Err((stage, code)) if named_candidate => {
+                                // The image can disappear between the snapshot, path query and
+                                // file lookup. A confirmed exit must not poison another EXE's
+                                // result; a live/inaccessible candidate remains conservative.
+                                let mut exit = 0;
+                                if unsafe { GetExitCodeProcess(process.0, &mut exit) } == 0
+                                    || exit == 259
+                                {
+                                    unknown = true;
+                                    error = code;
+                                    uncertainty =
+                                        Some(format!("{stage}, PID {}", entry.th32ProcessID));
                                 }
                             }
+                            Err(_) => {}
                         }
                     }
                 }
@@ -281,16 +295,22 @@ mod native {
         if code != ERROR_NO_MORE_FILES {
             unknown = true;
             error = Some(code);
+            uncertainty = Some("Process32FirstW/Process32NextW".into());
         }
         // Keep process handles until after enumeration; confirm liveness again before using its PID.
         let pids: Vec<u32> = matches
             .iter()
             .filter_map(|(pid, process)| {
                 let mut code = 0;
-                if unsafe { GetExitCodeProcess(process.0, &mut code) } != 0 && code == 259 {
+                if unsafe { GetExitCodeProcess(process.0, &mut code) } == 0 {
+                    unknown = true;
+                    error = Some(unsafe { GetLastError() });
+                    uncertainty = Some(format!("GetExitCodeProcess after enumeration, PID {pid}"));
+                    None
+                } else if code == 259 {
                     Some(*pid)
                 } else {
-                    unknown = true;
+                    // A handle still refers to the exited process even if Windows reuses its PID.
                     None
                 }
             })
@@ -334,7 +354,10 @@ mod native {
             state,
             pids,
             window_count: windows.count,
-            reason: reason.into(),
+            reason: match uncertainty.filter(|_| state == RunningState::Unknown) {
+                Some(stage) => format!("{reason} ({stage})"),
+                None => reason.into(),
+            },
             windows_error: error,
         }
     }
