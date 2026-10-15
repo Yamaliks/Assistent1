@@ -133,11 +133,32 @@
 - Проверки: 54 TypeScript-теста и TypeScript/Vite build; 12 portable Rust-тестов. Проверены router/PCM/сохранение/отмена/блокировка между окнами, неизменность подтверждённого snapshot, сохранение ошибок закрытия, безопасный ZIP и настоящая установка официального runtime; Rust Windows GNU compile/check. Добавлен native Windows-сценарий сохранения общих приложений/отмены/WM_CLOSE/обычного выхода/сохранившегося фонового процесса без kill. Прежние Windows-тесты не отключались.
 - Нативное выполнение Windows, реальный микрофон/русская модель/звучание, все прежние 9 ручных Windows-сценариев и ресурсы непрерывного прослушивания здесь не проверены. Это результат для проверки на ПК, не готовый голосовой релиз. Windows CI вручную не запускается; автоматический результат проверяется после публикации, если API доступен.
 
+### SOL one-EXE installer и общие приложения — подготовлено к Windows CI
+
+- Продолжена `task/sol-voice-smart-switching`/`01b6183`; предыдущий SOL ещё не вошёл в main, новый PR зависит от этой ветки.
+- Дефект повторного запуска: shared EXE исключались из закрытия, но запуск нового режима соблюдал прежний `skipIfRunning=false` и мог повторно создать процесс. Теперь переключение/повтор режима временно требует native проверки работающих EXE, без изменения сохранённых предпочтений. Общие ID, нормализованные пути и фактические aliases не закрываются/не перезапускаются/не сворачиваются; один исполнитель у окна/палитры/SOL.
+- Подготовка Runtime/модели из официальных HTTPS-источников, закреплённые SHA, ограничения/проверка размера, CRC и безопасная распаковка. Скрипт требует Apache-2.0 в точной строке модели официального каталога; текст каталога и лицензии входят в ресурсы. Крупных файлов в Git нет.
+- Версия пакета 0.1.2 отличает новый установщик от прежнего 0.1.1; ключи данных/идентификатор приложения не меняются. NSIS currentUser + mapped resources `sol/`, offline WebView2, автоматическое обнаружение модели. SHA manifest закрепляется в исполняемом коде; неполный/повреждённый комплект даёт понятную ошибку. Runtime/модель больше не требуют ZIP/пути/контрольной суммы от покупателя; только дополнительный авторский WAV-пакет остаётся в расширенных настройках. Данные v4 и старые локальные пакеты не удаляются.
+- Нативный Vosk выделен в общий тестируемый модуль без изменения FFI. Windows CI включает настоящую загрузку DLL/русской модели/PCM после silent NSIS install и reinstall, проверяет распакованные SHA/обязательные файлы и сохранность пользовательского AppLocalData-маркера, затем публикует один `Assistent1.exe` в artifact `Assistent1-windows-x64-SOL`.
+- Предоставленный Runtime действительно получен (14 882 445 байт), SHA совпала, CRC исправен; его DLL imports и upstream-лицензии изучены. Модель не перенесена: лимит вложений инструмента 32 МиБ, официальный сайт в этой среде 403. Полную локальную упаковку/распознавание не объявляем проверенными; источник/модель и installed native checks должны проверяться настоящим автоматическим CI после push.
+- Известные лицензии/уведомления сохранены. Полный коммерческий аудит бинарной provenance, GCC/source-conveyance, сторонних статических зависимостей и Microsoft не завершён; коммерческая готовность не заявлена. Голосовых записей нет; предусмотрено включение реально проверенного авторского WAV-пакета в тот же EXE.
+- Локально: 55 TypeScript-тестов, Vite build, 14 portable Rust-тестов и 4 Python-теста упаковщика; Windows GNU tests compile/link и Tauri check. Добавлены shared/different-ID/hard-link, отсутствие лишнего диалога, повторный запуск, повреждённый inventory/manifest и безопасная распаковка. Нативные Windows/микрофон/installer должны подтверждаться отдельно, тесты не отключены. Ручной Windows CI не запускается.
+
 ### Дальнейший движок
 
 - Cancellation and extended history. Sequential actions and per-action results shipped in 3В-Lite.
 - Skip already running programs implemented in SOL Core A using full EXE identity.
-- Safe close/switch confirmation, cancellation and wider history remain future work.
+- Safe close/switch confirmation is implemented and awaits native Windows validation; extended cancellation/history remain future work.
+
+### SOL 0.1.2 — Windows loader и настоящий русский офлайн-ответ
+
+- Loader использует canonical absolute Windows path из отдельных компонентов и только DLL-directory/System32; `libloading` теперь сохраняет вложенный Win32-код вместо бесполезного Display. В установленной структуре проверяются AMD64 всех четырёх DLL; старый вызов отдельно диагностируется до загрузки нового. Первоначальный журнал #38762844772 недоступен через API (Forbidden), точный код должен подтверждаться Windows-проверкой, а не предположением.
+- Русская озвучка eSpeak NG 1.52.0 отдельным процессом, UTF-8 stdin → PCM16 WAV → Web Audio. Исходники закреплены SHA-256, сборка static MSVC runtime; GPL-3.0-or-later с полным исходным кодом/инструкциями внутри установщика. Sonic source (Apache-2.0) поставляется для воспроизводимости, ускоритель не подключён. Внешних голосовых моделей/ручных установок нет. См. docs/SOL-TTS.md; прежний общий аудит Vosk не объявлен завершённым.
+- Голос/громкость независимы от микрофона; собственный WAV остаётся приоритетным. Для новых настроек ответы включены, старый выбор не меняется. Начальная реплика завершается перед действием; ошибки не озвучиваются как успех. Ограничены время/объём синтеза, UI не блокируется. Gate включает синтез/воспроизведение/хвост и отбрасывает запоздалый recognition result.
+- Общие приложения продолжают исключаться из диалога/закрытия/повторного запуска через прежний единый owner у main/palette/SOL; при пустом списке диалога нет. Трей, single-instance, schema и пользовательские данные не изменены.
+- Установочный CI сохраняет SHA-проверенное скачивание модели и `sol-bundle-check`, добавляет настоящий русский TTS, установку в путь с пробелами и close/reopen/second-instance smoke установленного EXE. Artifact публикуется только после всех проверок; CI вручную не запускается.
+- Автоматический #38773384786 подтвердил скачивание/сборку TTS и TS-проверки, но остановился на native Rust tests. API журналов Forbidden; добавлен вывод настоящей причины в публичную аннотацию с сохранением исходного exit code, тесты не ослаблены.
+- Локально: 57 TS, 16 portable Rust и 6 Python тестов, TypeScript/Vite build, Windows GNU compile/link тестов и Tauri check. eSpeak собран из закреплённых исходников на Linux и синтезировал непустой русский WAV (2,81 с). Нативный Windows loader, установленный TTS и NSIS требуют автоматического Windows CI; микрофон, акустический echo/качество и физический двойной клик трея — ручной ПК-тест.
 
 ## 4. Full mode editor
 
@@ -152,12 +173,12 @@
 
 ## 6. Local Russian speech recognition
 
-- Evaluate Vosk and local models; microphone permission and explicit listening status.
+- Real Vosk/PCM pipeline and one-EXE resource packaging are implemented; native installer and microphone verification remain pending.
 - No network/cloud speech services.
 
 ## 7. Voice activation phrase
 
-- Local activation, configurable phrase and sensitivity, resource/privacy controls.
+- Optional local Vosk prefix activation is implemented (off by default, explicit start); dedicated low-power wake detection and resource measurements remain future work.
 
 ## 8. Testing and release
 

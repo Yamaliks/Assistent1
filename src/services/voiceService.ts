@@ -41,7 +41,7 @@ export function createVoiceCapture(onStatus: (status: VoiceStatus, error?: strin
         queue = queue.then(async () => {
           if (generation !== own || !shouldListen()) return;
           const text = await invoke<string | null>('sol_feed', { token: nativeToken, samples });
-          if (text && generation === own) {
+          if (text && generation === own && shouldListen()) {
             handling = true; onStatus('recognizing');
             if (!continuous) await stop();
             const afterStop = generation; onStatus('recognizing');

@@ -6,6 +6,7 @@ use tauri::{
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 mod actions;
 mod applications;
+mod bundled_assets;
 mod launch_types;
 mod launch_validation;
 mod mode_switch;
@@ -13,7 +14,10 @@ mod mode_switch_commands;
 mod process_identity;
 mod sol_asset_commands;
 mod sol_assets;
+mod sol_tts;
 mod voice;
+#[cfg(windows)]
+mod vosk;
 mod window_lifecycle;
 #[cfg(windows)]
 mod windows_launch;

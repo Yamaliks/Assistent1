@@ -83,3 +83,21 @@ test('the confirmed next-mode snapshot is the one launched even if settings chan
   const owner = createModeController(() => settings, () => {}, () => true, () => {}, runner, async () => { settings.modes[1].actions = [{ id: 'url', kind: 'website', label: 'edited', url: 'https://later-edit.example' }]; return true; });
   await owner.run('game'); await owner.run('work'); assert.deepEqual(calls, ['https://confirmed.example']);
 });
+test('switching keeps running shared applications with different library IDs and does not mutate saved skip preferences', async () => {
+  const settings = freshSettings(); settings.modes[0].actions = []; settings.modes[1].actions = [];
+  const discord = settings.applications.find(app => app.id === 'discord')!; discord.path = 'C:\\Apps\\Discord.exe'; discord.skipIfRunning = false;
+  settings.applications.push({ ...discord, id: 'other-discord', path: 'c:/apps/discord.EXE' });
+  settings.modes[0].actions.push({ id: 'old', kind: 'application', applicationId: 'discord', label: '' });
+  settings.modes[1].actions.push({ id: 'shared', kind: 'application', applicationId: 'other-discord', label: '' });
+  const before = structuredClone(settings.applications); let launches = 0; let running = false; let dialogs = 0;
+  const runner = createModeRunner(createSystemServices(async (_kind, _target, _minimized, guarded) => {
+    if (guarded && running) return 'already-running';
+    running = true; launches++; return 'launched';
+  }));
+  const controller = createModeController(() => settings, () => {}, () => true, () => {}, runner, async (previous, next) => {
+    const targets = switchTargets(previous, next); if (targets.previous.length) dialogs++; return true;
+  });
+  await controller.run('game'); const switched = await controller.run('work');
+  assert.equal(launches, 1); assert.equal(dialogs, 0); assert.equal(switched?.results[0].status, 'already-running'); assert.deepEqual(settings.applications, before);
+  await controller.run('work'); assert.equal(launches, 1); // Repeat card/voice/palette requests use the same owner.
+});

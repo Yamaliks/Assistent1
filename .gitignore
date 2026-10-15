@@ -7,3 +7,10 @@ src-tauri/gen/
 .env
 .env.*
 !.env.example
+# Prepared, checksum-verified SOL binaries/model; never commit them.
+src-tauri/resources/sol/
+src-tauri/resources/sol.previous/
+src-tauri/resources/sol-staging-*/
+
+__pycache__/
+*.pyc

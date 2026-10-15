@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, 'codex/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'task/sol-voice-smart-switching']
   workflow_dispatch:
 
 permissions:
@@ -40,6 +40,17 @@ jobs:
       - name: Install locked frontend dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Set up Python for deterministic SOL packaging
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Test SOL packaging tooling
+        run: python -m unittest discover -s tests -p test_sol_packaging.py -v
+
+      - name: Stage verified offline Vosk, Russian model and Russian eSpeak NG
+        run: python scripts/prepare_sol.py
+
       - name: Test command routing and settings
         run: npm test
 
@@ -47,7 +58,17 @@ jobs:
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
       - name: Test Rust validation and window lifecycle
-        run: cargo test --locked --manifest-path tests/rust-validation/Cargo.toml
+        shell: python
+        run: |
+          import subprocess, sys
+          sys.stdout.reconfigure(encoding="utf-8")
+          result = subprocess.run(["cargo", "test", "--locked", "--manifest-path", "tests/rust-validation/Cargo.toml"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", errors="replace")
+          print(result.stdout, flush=True)
+          if result.returncode:
+              # Public annotations retain the actual failure even when Actions log API is unavailable.
+              detail = result.stdout[-16000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print("::error title=Native Rust test failure::" + detail, flush=True)
+          sys.exit(result.returncode)
 
       - name: Check Windows dev configuration
         run: cargo check --locked --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc
@@ -59,16 +80,28 @@ jobs:
         with:
           projectPath: .
           tauriScript: npm run tauri
-          args: --target x86_64-pc-windows-msvc --bundles nsis --ci -- --locked
+          args: --config src-tauri/tauri.bundle.conf.json --target x86_64-pc-windows-msvc --bundles nsis --ci -- --locked
 
       - name: Smoke test native release close and reopen
         shell: pwsh
         run: ./tests/windows-reopen.ps1 -Exe ./src-tauri/target/x86_64-pc-windows-msvc/release/assistent1.exe
 
+      - name: Build native installed-bundle checker
+        run: cargo build --locked --manifest-path tests/rust-validation/Cargo.toml --bin sol-bundle-check
+
+      - name: Verify installed SOL DLL, Russian model, TTS and reopen
+        shell: pwsh
+        run: |
+          $installers = @(Get-ChildItem src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe)
+          if ($installers.Count -ne 1) { throw "Expected exactly one NSIS installer" }
+          ./tests/windows-installer.ps1 -Installer $installers[0].FullName -BundleChecker ./tests/rust-validation/target/debug/sol-bundle-check.exe
+          New-Item -ItemType Directory -Path artifacts -Force | Out-Null
+          Copy-Item -LiteralPath $installers[0].FullName -Destination artifacts/Assistent1.exe
+
       - name: Upload NSIS installer
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Assistent1-windows-x64-nsis
-          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          name: Assistent1-windows-x64-SOL
+          path: artifacts/Assistent1.exe
           if-no-files-found: error
           retention-days: 14

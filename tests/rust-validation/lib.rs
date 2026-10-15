@@ -16,3 +16,11 @@ pub mod windows_launch;
 pub mod mode_switch;
 #[path = "../../src-tauri/src/sol_assets.rs"]
 pub mod sol_assets;
+
+#[path = "../../src-tauri/src/bundled_assets.rs"]
+pub mod bundled_assets;
+#[path = "../../src-tauri/src/sol_tts.rs"]
+pub mod sol_tts;
+#[cfg(windows)]
+#[path = "../../src-tauri/src/vosk.rs"]
+pub mod vosk;
