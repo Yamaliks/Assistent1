@@ -58,7 +58,17 @@ jobs:
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
 
       - name: Test Rust validation and window lifecycle
-        run: cargo test --locked --manifest-path tests/rust-validation/Cargo.toml
+        shell: python
+        run: |
+          import subprocess, sys
+          sys.stdout.reconfigure(encoding="utf-8")
+          result = subprocess.run(["cargo", "test", "--locked", "--manifest-path", "tests/rust-validation/Cargo.toml"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding="utf-8", errors="replace")
+          print(result.stdout, flush=True)
+          if result.returncode:
+              # Public annotations retain the actual failure even when Actions log API is unavailable.
+              detail = result.stdout[-16000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print("::error title=Native Rust test failure::" + detail, flush=True)
+          sys.exit(result.returncode)
 
       - name: Check Windows dev configuration
         run: cargo check --locked --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc

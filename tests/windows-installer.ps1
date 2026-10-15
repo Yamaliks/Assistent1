@@ -24,9 +24,9 @@ try {
     & $checker $bundle
     if ($LASTEXITCODE -ne 0) { throw "Installed Vosk/model validation failed: $LASTEXITCODE" }
   }
-  # Exercise the installed EXE too: hidden main, reopen/second-instance and one palette.
+  # Exercise the installed EXE too: hide to tray, reopen the same HWND/second-instance.
   & (Join-Path $PSScriptRoot 'windows-reopen.ps1') -Exe (Join-Path $installDir 'assistent1.exe')
-  $result = "NSIS install and reinstall passed: unpacked SOL inventory, native DLL/model loading, Russian TTS non-silent PCM, installed close/reopen/shortcut, existing data marker preserved. Installer: $installerPath"
+  $result = "NSIS install and reinstall passed: unpacked SOL inventory, native DLL/model loading, Russian TTS non-silent PCM, installed close/reopen/second-instance, existing data marker preserved. Installer: $installerPath"
   Write-Output $result
   if ($env:GITHUB_STEP_SUMMARY) { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $result }
 } finally {

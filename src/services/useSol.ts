@@ -18,7 +18,7 @@ export function useSol(owner: boolean, getSettings: () => Settings, runMode: (id
   const audio = useRef<{ context?: AudioContext; source?: AudioBufferSourceNode; finish?: () => void; generation: number }>({ generation: 0 });
   const commandGeneration = useRef(0);
   const set = (patch: Partial<SolState>) => setState(current => { const next = { ...current, ...patch }; if (desktop && owner) void emit('sol-state', next).catch(() => {}); return next; });
-  const stopAudio = () => { mutedUntil.current = performance.now() + 400; audio.current.generation++; audio.current.source?.stop(); audio.current.source = undefined; audio.current.finish?.(); audio.current.finish = undefined; const old = audio.current.context; audio.current.context = undefined; if (old) void old.close().catch(() => {}); };
+  const stopAudio = () => { mutedUntil.current = performance.now() + 400; audio.current.generation++; try { audio.current.source?.stop(); } catch { /* A source waiting for context.resume() has not started yet. */ } audio.current.source = undefined; audio.current.finish?.(); audio.current.finish = undefined; const old = audio.current.context; audio.current.context = undefined; if (old) void old.close().catch(() => {}); };
   const mutedUntil = useRef(0);
   async function speak(id: string, test = false) {
     const config = latest.current.getSettings().voice ?? defaultVoiceSettings();
