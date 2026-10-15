@@ -150,6 +150,15 @@
 - Skip already running programs implemented in SOL Core A using full EXE identity.
 - Safe close/switch confirmation is implemented and awaits native Windows validation; extended cancellation/history remain future work.
 
+### SOL 0.1.2 — Windows loader и настоящий русский офлайн-ответ
+
+- Loader использует canonical absolute Windows path из отдельных компонентов и только DLL-directory/System32; `libloading` теперь сохраняет вложенный Win32-код вместо бесполезного Display. В установленной структуре проверяются AMD64 всех четырёх DLL; старый вызов отдельно диагностируется до загрузки нового. Первоначальный журнал #38762844772 недоступен через API (Forbidden), точный код должен подтверждаться Windows-проверкой, а не предположением.
+- Русская озвучка eSpeak NG 1.52.0 отдельным процессом, UTF-8 stdin → PCM16 WAV → Web Audio. Исходники закреплены SHA-256, сборка static MSVC runtime; GPL-3.0-or-later с полным исходным кодом/инструкциями внутри установщика. Sonic source (Apache-2.0) поставляется для воспроизводимости, ускоритель не подключён. Внешних голосовых моделей/ручных установок нет. См. docs/SOL-TTS.md; прежний общий аудит Vosk не объявлен завершённым.
+- Голос/громкость независимы от микрофона; собственный WAV остаётся приоритетным. Для новых настроек ответы включены, старый выбор не меняется. Начальная реплика завершается перед действием; ошибки не озвучиваются как успех. Ограничены время/объём синтеза, UI не блокируется. Gate включает синтез/воспроизведение/хвост и отбрасывает запоздалый recognition result.
+- Общие приложения продолжают исключаться из диалога/закрытия/повторного запуска через прежний единый owner у main/palette/SOL; при пустом списке диалога нет. Трей, single-instance, schema и пользовательские данные не изменены.
+- Установочный CI сохраняет SHA-проверенное скачивание модели и `sol-bundle-check`, добавляет настоящий русский TTS, установку в путь с пробелами и close/reopen/shortcut smoke установленного EXE. Artifact публикуется только после всех проверок; CI вручную не запускается.
+- Локально: 57 TS, 16 portable Rust и 6 Python тестов, TypeScript/Vite build, Windows GNU compile/link тестов и Tauri check. eSpeak собран из закреплённых исходников на Linux и синтезировал непустой русский WAV (2,81 с). Нативный Windows loader, установленный TTS и NSIS требуют автоматического Windows CI; микрофон, акустический echo/качество и физический двойной клик трея — ручной ПК-тест.
+
 ## 4. Full mode editor
 
 - Add/remove/reorder actions, file picker, validation, import/export.

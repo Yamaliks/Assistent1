@@ -30,7 +30,7 @@ export function routeSol(input: string, settings: Settings, wakeOnly = false): S
   return matches.length > 1 ? { kind: 'ambiguous' } : matches[0] ?? { kind: 'unknown' };
 }
 export interface VoiceSettings { enabled: boolean; replies: boolean; volume: number; brief: boolean; deviceId: string; wake: boolean }
-export const defaultVoiceSettings = (): VoiceSettings => ({ enabled: false, replies: false, volume: 70, brief: false, deviceId: '', wake: false });
+export const defaultVoiceSettings = (): VoiceSettings => ({ enabled: false, replies: true, volume: 70, brief: false, deviceId: '', wake: false });
 export function isVoiceSettings(value: unknown): value is VoiceSettings {
   if (!value || typeof value !== 'object') return false;
   const v = value as VoiceSettings;

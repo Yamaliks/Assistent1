@@ -48,7 +48,7 @@ jobs:
       - name: Test SOL packaging tooling
         run: python -m unittest discover -s tests -p test_sol_packaging.py -v
 
-      - name: Stage verified offline Vosk runtime and Russian model
+      - name: Stage verified offline Vosk, Russian model and Russian eSpeak NG
         run: python scripts/prepare_sol.py
 
       - name: Test command routing and settings
@@ -79,7 +79,7 @@ jobs:
       - name: Build native installed-bundle checker
         run: cargo build --locked --manifest-path tests/rust-validation/Cargo.toml --bin sol-bundle-check
 
-      - name: Verify installed SOL resources and offline native model load
+      - name: Verify installed SOL DLL, Russian model, TTS and reopen
         shell: pwsh
         run: |
           $installers = @(Get-ChildItem src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe)

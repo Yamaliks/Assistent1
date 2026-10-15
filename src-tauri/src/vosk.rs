@@ -30,15 +30,7 @@ impl Drop for Session {
 impl Session {
     pub fn new(root: &Path, rate: u32, token: String) -> Result<Self, String> {
         crate::bundled_assets::validate_trusted(root)?;
-        // Absolute DLL path; dependencies may load only from its directory or trusted system dirs.
-        let library: libloading::Library = unsafe {
-            libloading::os::windows::Library::load_with_flags(
-                root.join("runtime/libvosk.dll"),
-                0x100 | 0x1000,
-            )
-        }
-        .map_err(|e| format!("Не удалось загрузить Vosk x64. Установите runtime: {e}"))?
-        .into();
+        let library = load_runtime(root)?;
         unsafe {
             let new_model: NewModel = *library
                 .get(b"vosk_model_new\0")
@@ -109,4 +101,19 @@ impl Session {
             .trim();
         Ok((!text.is_empty()).then(|| text.to_string()))
     }
+}
+
+/// LoadLibraryExW requires an absolute path with Windows separators. In particular,
+/// do not pass a Path::join("runtime/libvosk.dll") string containing a forward slash.
+pub fn load_runtime(root: &Path) -> Result<libloading::Library, String> {
+    let path = root
+        .join("runtime")
+        .join("libvosk.dll")
+        .canonicalize()
+        .map_err(|e| format!("Не найден Vosk: {e}"))?;
+    unsafe { libloading::os::windows::Library::load_with_flags(&path, 0x100 | 0x800) }
+        .map(Into::into)
+        // Display in libloading 0.7 discards the nested Win32 error; Debug preserves
+        // its raw_os_error and message (126 missing dependency, 193 wrong machine, ...).
+        .map_err(|e| format!("Vosk x64 · {} · LoadLibraryExW: {e:?}", path.display()))
 }

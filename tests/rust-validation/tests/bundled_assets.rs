@@ -33,13 +33,28 @@ impl Fixture {
             "licenses/MODEL-NOTICE.txt",
             "licenses/VOSK-APACHE-2.0.txt",
             "licenses/SOL-THIRD-PARTY.md",
+            if cfg!(windows) {
+                "tts/espeak-ng.exe"
+            } else {
+                "tts/espeak-ng"
+            },
+            "tts/espeak-ng-data/ru_dict",
+            "tts/espeak-ng-data/lang/zle/ru",
+            "tts/espeak-ng-data/phontab",
+            "tts/espeak-ng-data/phonindex",
+            "tts/espeak-ng-data/phondata",
+            "tts/espeak-ng-data/intonations",
+            "licenses/tts-source/espeak.zip",
+            "licenses/tts-source/sonic.zip",
+            "licenses/tts-source/COPYING-GPL-3.0.txt",
+            "licenses/tts-source/BUILD-AND-LICENSE.md",
         ] {
             let file = path.join(name);
             std::fs::create_dir_all(file.parent().unwrap()).unwrap();
             std::fs::write(file, b"inventory fixture only").unwrap();
             files.push(json!({"path":name,"bytes":22,"sha256":format!("{:x}",Sha256::digest(b"inventory fixture only"))}));
         }
-        let manifest = json!({"schema":1,"archives":{"runtime":{"name":"vosk-win64-0.3.45","sha256":RUNTIME_HASH,"bytes":14882445},"model":{"name":"vosk-model-small-ru-0.22","sha256":MODEL_HASH,"bytes":45000000}},"files":files});
+        let manifest = json!({"schema":1,"archives":{"runtime":{"name":"vosk-win64-0.3.45","sha256":RUNTIME_HASH,"bytes":14882445},"model":{"name":"vosk-model-small-ru-0.22","sha256":MODEL_HASH,"bytes":45000000},"tts":{"name":"espeak-ng-1.52.0","sha256":"b4517592e3cbc43703bb1c782702eafb98097659e0b7e96e69c32ee32ae5003a","bytes":19257724}},"files":files});
         std::fs::write(
             path.join("bundle-manifest.json"),
             serde_json::to_vec(&manifest).unwrap(),

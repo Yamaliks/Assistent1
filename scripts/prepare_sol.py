@@ -35,7 +35,7 @@ def check_archive(path, spec):
 def download(url, path, limit):
     request = urllib.request.Request(url, headers={"User-Agent": "Assistent1-SOL-build", "Accept-Encoding": "identity"})
     with urllib.request.urlopen(request, timeout=90) as response, path.open("wb") as output:
-        if urlparse(response.url).scheme != "https" or urlparse(response.url).hostname not in {"alphacephei.com", "github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"}:
+        if urlparse(response.url).scheme != "https" or urlparse(response.url).hostname not in {"alphacephei.com", "github.com", "codeload.github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com"}:
             raise ValueError("HTTPS required")
         declared = response.headers.get("Content-Length")
         if declared and int(declared) > limit:
@@ -59,14 +59,16 @@ def model_license(catalog):
             raise ValueError("Selected model catalog row does not declare Apache-2.0")
     raise ValueError("Official catalog does not identify the exact Russian model/license")
 
-def extract(path, spec, destination):
+def extract(path, spec, destination, source_links=None):
     total = 0
     with zipfile.ZipFile(path) as archive:
         if len(archive.infolist()) > 5000:
             raise ValueError("Too many ZIP entries")
         for item in archive.infolist():
             part = PurePosixPath(item.filename)
-            if part.is_absolute() or not part.parts or part.parts[0] != spec["name"] or ".." in part.parts or "\\" in item.filename or ":" in item.filename or (item.external_attr >> 16) & 0o170000 == 0o120000:
+            link = (item.external_attr >> 16) & 0o170000 == 0o120000
+            reviewed_link = (source_links or {}).get(item.filename)
+            if part.is_absolute() or not part.parts or part.parts[0] != spec["name"] or ".." in part.parts or "\\" in item.filename or ":" in item.filename or (link and not reviewed_link):
                 raise ValueError("Unsafe archive path/link")
             if any(p.endswith((".", " ")) or re.fullmatch(r"(?i)(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?", p) for p in part.parts):
                 raise ValueError("Windows device path in archive")
@@ -78,6 +80,15 @@ def extract(path, spec, destination):
                 target.mkdir(parents=True, exist_ok=True)
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
+            if link:
+                # One pinned upstream source header alias, materialized as a regular
+                # file for Windows builds. No filesystem symlink is ever created.
+                expected, source = reviewed_link
+                if archive.read(item).decode("utf-8") != expected:
+                    raise ValueError("Source header alias changed")
+                with target.open("xb") as output:
+                    output.write(archive.read(source))
+                continue
             # Exclusive create also catches duplicate/case-colliding entries on Windows.
             with archive.open(item) as source, target.open("xb") as output:
                 count = 0
@@ -137,7 +148,9 @@ def prepare(output, runtime=None, model=None, catalog_file=None, audio=None):
         for file in MODEL_FILES:
             if not (stage / "model" / file).is_file():
                 raise ValueError(f"Missing model component: {file}")
-        shutil.copytree(ROOT / "docs" / "licenses", stage / "licenses")
+        from prepare_tts import prepare_tts
+        provenance["tts"] = prepare_tts(work, stage)
+        shutil.copytree(ROOT / "docs" / "licenses", stage / "licenses", dirs_exist_ok=True)
         shutil.copyfile(ROOT / "docs" / "SOL-THIRD-PARTY.md", stage / "licenses" / "SOL-THIRD-PARTY.md")
         shutil.copyfile(catalog, stage / "licenses" / "model-catalog.html")
         (stage / "licenses" / "MODEL-NOTICE.txt").write_text(f"Source: {CATALOG}\nOfficial catalog declaration: {license_row}\nArchive SHA256: {MODEL['sha256']}\nCatalog SHA256: {digest(catalog)}\nLicense: Apache-2.0 (see VOSK-APACHE-2.0.txt).\n", encoding="utf-8")

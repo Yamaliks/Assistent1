@@ -17,6 +17,7 @@ struct Archive {
 struct Archives {
     runtime: Archive,
     model: Archive,
+    tts: Archive,
 }
 #[derive(Deserialize)]
 struct Entry {
@@ -53,6 +54,10 @@ pub fn validate(root: &Path) -> Result<(), String> {
             || manifest.archives.model.name != "vosk-model-small-ru-0.22"
             || manifest.archives.model.sha256 != MODEL_HASH
             || !(40_000_000..=55_000_000).contains(&manifest.archives.model.bytes)
+            || manifest.archives.tts.name != "espeak-ng-1.52.0"
+            || manifest.archives.tts.sha256
+                != "b4517592e3cbc43703bb1c782702eafb98097659e0b7e96e69c32ee32ae5003a"
+            || manifest.archives.tts.bytes != 19_257_724
         {
             return Err("Неверная версия/источник комплекта".into());
         }
@@ -65,7 +70,7 @@ pub fn validate(root: &Path) -> Result<(), String> {
             let path = Path::new(&entry.path);
             if !path.components().all(|c| matches!(c, Component::Normal(_)))
                 || entry.path.contains(['\\', ':'])
-                || !["runtime/", "model/", "licenses/", "audio/"]
+                || !["runtime/", "model/", "licenses/", "audio/", "tts/"]
                     .iter()
                     .any(|prefix| entry.path.starts_with(prefix))
                 || !paths.insert(entry.path.as_str())
@@ -112,6 +117,21 @@ pub fn validate(root: &Path) -> Result<(), String> {
             "licenses/MODEL-NOTICE.txt",
             "licenses/VOSK-APACHE-2.0.txt",
             "licenses/SOL-THIRD-PARTY.md",
+            if cfg!(windows) {
+                "tts/espeak-ng.exe"
+            } else {
+                "tts/espeak-ng"
+            },
+            "tts/espeak-ng-data/ru_dict",
+            "tts/espeak-ng-data/lang/zle/ru",
+            "tts/espeak-ng-data/phontab",
+            "tts/espeak-ng-data/phonindex",
+            "tts/espeak-ng-data/phondata",
+            "tts/espeak-ng-data/intonations",
+            "licenses/tts-source/espeak.zip",
+            "licenses/tts-source/sonic.zip",
+            "licenses/tts-source/COPYING-GPL-3.0.txt",
+            "licenses/tts-source/BUILD-AND-LICENSE.md",
         ] {
             if !paths.contains(required) {
                 return Err(format!("Manifest не содержит {required}"));

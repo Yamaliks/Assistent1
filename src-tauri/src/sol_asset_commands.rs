@@ -39,6 +39,7 @@ pub struct AssetStatus {
     runtime: bool,
     model: bool,
     audio: bool,
+    tts: bool,
     bundled: bool,
     error: Option<String>,
 }
@@ -51,6 +52,7 @@ pub async fn sol_asset_status(app: tauri::AppHandle) -> Result<AssetStatus, Stri
             runtime: error.is_none(),
             model: error.is_none(),
             audio,
+            tts: error.is_none(),
             bundled: true,
             error,
         })
@@ -84,8 +86,10 @@ pub async fn sol_audio(app: tauri::AppHandle, id: String) -> Result<Vec<u8>, Str
     }
     tauri::async_runtime::spawn_blocking(move || {
         let path = audio_root(&app)?;
-        valid_audio(&path)?;
-        std::fs::read(path.join(format!("{id}.wav"))).map_err(|e| e.to_string())
+        if valid_audio(&path).is_ok() {
+            return std::fs::read(path.join(format!("{id}.wav"))).map_err(|e| e.to_string());
+        }
+        crate::sol_tts::synthesize(&root(&app)?, &id)
     })
     .await
     .map_err(|e| e.to_string())?

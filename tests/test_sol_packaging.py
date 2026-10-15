@@ -47,5 +47,29 @@ class PackagingTests(unittest.TestCase):
             pack.extract(archive, pack.MODEL, temp / 'model')
             self.assertEqual((temp / 'model/conf/model.conf').read_bytes(), b'fixture only')
 
+    def test_source_header_alias_is_materialized_only_when_explicitly_reviewed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            temp = Path(temp)
+            path = temp / 'source.zip'
+            with zipfile.ZipFile(path, 'w') as archive:
+                alias = zipfile.ZipInfo('source/include/alias.h')
+                alias.create_system = 3
+                alias.external_attr = 0o120777 << 16
+                archive.writestr(alias, '../header.h')
+                archive.writestr('source/header.h', 'real header')
+            with self.assertRaises(ValueError):
+                pack.extract(path, {'name': 'source'}, temp / 'denied')
+            pack.extract(path, {'name': 'source'}, temp / 'allowed', {'source/include/alias.h': ('../header.h', 'source/header.h')})
+            self.assertFalse((temp / 'allowed/include/alias.h').is_symlink())
+            self.assertEqual((temp / 'allowed/include/alias.h').read_text(), 'real header')
+
+    def test_tts_uses_pinned_complete_source_and_no_network_at_runtime(self):
+        import sys
+        sys.path.insert(0, str(pack.ROOT / 'scripts'))
+        import prepare_tts
+        self.assertEqual(prepare_tts.ESPEAK['sha256'], 'b4517592e3cbc43703bb1c782702eafb98097659e0b7e96e69c32ee32ae5003a')
+        self.assertEqual(prepare_tts.SONIC['sha256'], 'd7c5a715f574a4a2a5afe970f489d3950bcd5229f1bed3f0e010a5413957ec20')
+        self.assertTrue((pack.ROOT / 'docs/SOL-TTS.md').is_file())
+
 if __name__ == '__main__':
     unittest.main()

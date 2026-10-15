@@ -14,6 +14,7 @@ mod mode_switch_commands;
 mod process_identity;
 mod sol_asset_commands;
 mod sol_assets;
+mod sol_tts;
 mod voice;
 #[cfg(windows)]
 mod vosk;

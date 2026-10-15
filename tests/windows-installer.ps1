@@ -5,7 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $installerPath = (Resolve-Path $Installer).Path
 $checker = (Resolve-Path $BundleChecker).Path
-$installDir = Join-Path ([IO.Path]::GetTempPath()) ('Assistent1-SOL-' + [Guid]::NewGuid().ToString('N'))
+$installDir = Join-Path ([IO.Path]::GetTempPath()) ('Assistent1 SOL ' + [Guid]::NewGuid().ToString('N'))
 $dataDir = Join-Path $env:LOCALAPPDATA 'com.assistent1.desktop'
 [IO.Directory]::CreateDirectory($dataDir) | Out-Null
 $marker = Join-Path $dataDir ('installer-preservation-' + [Guid]::NewGuid().ToString('N') + '.txt')
@@ -24,7 +24,9 @@ try {
     & $checker $bundle
     if ($LASTEXITCODE -ne 0) { throw "Installed Vosk/model validation failed: $LASTEXITCODE" }
   }
-  $result = "NSIS install and reinstall passed: unpacked SOL inventory, native DLL/model loading, PCM path, existing data marker preserved. Installer: $installerPath"
+  # Exercise the installed EXE too: hidden main, reopen/second-instance and one palette.
+  & (Join-Path $PSScriptRoot 'windows-reopen.ps1') -Exe (Join-Path $installDir 'assistent1.exe')
+  $result = "NSIS install and reinstall passed: unpacked SOL inventory, native DLL/model loading, Russian TTS non-silent PCM, installed close/reopen/shortcut, existing data marker preserved. Installer: $installerPath"
   Write-Output $result
   if ($env:GITHUB_STEP_SUMMARY) { Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $result }
 } finally {
