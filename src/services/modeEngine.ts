@@ -31,7 +31,7 @@ export function createModeRunner(services: SystemServices = systemServices) {
   const running = new Set<string>();
   return {
     isRunning: (modeId: string) => running.has(modeId),
-    async run(mode: Mode, settings: Settings, onProgress: (progress: ModeProgress) => void = () => {}): Promise<ModeRun> {
+    async run(mode: Mode, settings: Settings, onProgress: (progress: ModeProgress) => void = () => {}, options: { preserveRunning?: boolean } = {}): Promise<ModeRun> {
       if (running.has(mode.id)) throw new Error('Этот режим уже запускается.');
       running.add(mode.id);
       // Inputs may be edited while Windows handles a launch; this run keeps its saved snapshot.
@@ -49,7 +49,7 @@ export function createModeRunner(services: SystemServices = systemServices) {
               if (!app) throw new Error('Приложение отсутствует в библиотеке.');
               if (app.useDefaultBrowser) { outcome = await services.execute({ id: action.id, kind: 'browser', label: name }, snapshot.mode.launchMinimized ?? false, true); } else {
               if (!app.path) throw new Error('Путь к EXE не настроен. Откройте мою библиотеку.');
-              outcome = await services.execute({ id: action.id, label: name, kind: 'program', path: app.path }, snapshot.mode.launchMinimized ?? false, app.skipIfRunning ?? false); }
+              outcome = await services.execute({ id: action.id, label: name, kind: 'program', path: app.path }, snapshot.mode.launchMinimized ?? false, options.preserveRunning || (app.skipIfRunning ?? false)); }
             } else if (action.kind === 'site') {
               const site = snapshot.settings.sites.find(site => site.id === action.siteId);
               if (!site?.url) throw new Error('Адрес сайта не настроен. Откройте мою библиотеку.');
@@ -57,9 +57,9 @@ export function createModeRunner(services: SystemServices = systemServices) {
             } else if (action.kind === 'command') {
               const command = snapshot.settings.commands.find(command => command.id === action.commandId);
               if (!command) throw new Error('Сохранённая команда не найдена.');
-              const skip = command.kind === 'program' && snapshot.settings.applications.some(app => app.skipIfRunning && app.path && normalizeExe(app.path) === normalizeExe(command.target));
+              const skip = command.kind === 'program' && (options.preserveRunning || snapshot.settings.applications.some(app => app.skipIfRunning && app.path && normalizeExe(app.path) === normalizeExe(command.target)));
               outcome = await launchUserCommand(command, services, snapshot.mode.launchMinimized ?? false, skip);
-            } else outcome = await services.execute(action, snapshot.mode.launchMinimized ?? false);
+            } else outcome = await services.execute(action, snapshot.mode.launchMinimized ?? false, options.preserveRunning && action.kind === 'program');
             results.push({ actionId: action.id, name, status: outcome.outcome === 'already-running' ? 'already-running' : outcome.outcome === 'state-unknown' ? 'state-unknown' : 'success', message: outcome.message, details: { ...details, ...outcome.details } });
           } catch (error) {
             results.push({ actionId: action.id, name, status: 'error', message: error instanceof Error ? error.message : String(error), details: { ...details, ...(error instanceof LaunchError ? error.details : {}) } });

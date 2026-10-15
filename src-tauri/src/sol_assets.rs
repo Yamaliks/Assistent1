@@ -1,4 +1,3 @@
-use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::{
     io::{Read, Write},
@@ -16,20 +15,6 @@ pub const AUDIO_IDS: &[&str] = &[
     "cancelled",
     "goodbye",
 ];
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AssetStatus {
-    runtime: bool,
-    model: bool,
-    audio: bool,
-}
-pub fn status(root: &Path) -> AssetStatus {
-    AssetStatus {
-        runtime: root.join("runtime/libvosk.dll").is_file(),
-        model: valid_model(&root.join("model")),
-        audio: valid_audio(&root.join("audio")).is_ok(),
-    }
-}
 fn valid_model(path: &Path) -> bool {
     [
         "am/final.mdl",

@@ -77,7 +77,7 @@ export function App() {
       <div className="brand"><span className="brand-mark"><AudioLines size={23} /></span><div>Assistent<span className="text-accent">1</span><small>Ваш личный ритм</small></div></div>
       <div className="nav-label">Пространство</div>
       <nav aria-label="Основная навигация">{navigation.map(({ id, title: label, icon: Icon }) => <button key={id} className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => { setPage(id); setSelectedId(null); }} aria-current={page === id ? 'page' : undefined}><Icon size={19} /><span>{label}</span>{page === id && <span className="nav-dot" />}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="privacy"><ShieldCheck size={17} /><span>Локальное приложение<small>Без облачных API</small></span></div><div className="version">Assistent1 <span>v0.1.1</span></div></div>
+      <div className="sidebar-bottom"><div className="privacy"><ShieldCheck size={17} /><span>Локальное приложение<small>Без облачных API</small></span></div><div className="version">Assistent1 <span>v0.1.2</span></div></div>
     </aside>
     <div className="workspace">
       <header className="topbar"><div className="breadcrumb">Пространство <ChevronRight size={14} /><span>{title}</span></div><button className="palette-launch" onClick={() => { void showPalette().catch(reportError); }}><Search size={16} />Быстрая панель <kbd>Ctrl Alt Space</kbd></button></header>

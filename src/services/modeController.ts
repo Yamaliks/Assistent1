@@ -21,7 +21,7 @@ export function createModeController(getSettings: () => Settings, publish: (stat
         const decision = active && active.mode.id !== id ? await confirmSwitch(active, next) : true;
         if (decision === false || (typeof decision === 'object' && !decision.proceed)) { notify('Переключение отменено.'); return; }
         const closed = typeof decision === 'object' ? decision.results : [];
-        const launched = await runner.run(next.mode, next.settings, progress => put(id, { ...progress, results: [...closed, ...progress.results] }));
+        const launched = await runner.run(next.mode, next.settings, progress => put(id, { ...progress, results: [...closed, ...progress.results] }), { preserveRunning: !!active });
         const closeErrors = closed.filter(result => result.status === 'error').length;
         const result: ModeRun = { ...launched, results: [...closed, ...launched.results], ...(closeErrors ? { status: 'errors', summary: `${launched.summary} Не закрыто приложений: ${closeErrors}.` } : {}) };
         active = next;

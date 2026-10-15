@@ -7,6 +7,9 @@ publish = false
 [lib]
 path = "lib.rs"
 
+[build-dependencies]
+sha2 = "0.10"
+
 [dependencies]
 url = "2"
 serde_json = "1"
@@ -15,8 +18,13 @@ zip = { version = "2.4", default-features = false, features = ["deflate"] }
 serde = { version = "1", features = ["derive"] }
 
 [target.'cfg(windows)'.dependencies]
+libloading = "0.7"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading", "Win32_Storage_FileSystem", "Win32_Security", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Dwm", "Win32_UI_Shell"] }
 
 [[bin]]
 name = "launch-fixture"
 path = "launch_fixture.rs"
+
+[[bin]]
+name = "sol-bundle-check"
+path = "sol_bundle_check.rs"

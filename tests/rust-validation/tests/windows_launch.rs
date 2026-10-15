@@ -216,6 +216,30 @@ fn real_mode_switch_keeps_shared_apps_and_only_posts_close_after_selection() {
     assert!(shared.candidates.is_empty());
     finish(shared.token, vec![]).unwrap();
     assert_state(app.path(), RunningState::AlreadyRunning);
+    let alias = app.dir.join("shared-alias.exe");
+    std::fs::hard_link(&app.exe, &alias).unwrap();
+    let alias_target = Target {
+        id: "different-library-id".into(),
+        name: "Alias".into(),
+        path: alias.to_str().unwrap().into(),
+    };
+    let shared_alias = prepare(vec![target.clone()], vec![alias_target]).unwrap();
+    assert!(
+        shared_alias.candidates.is_empty(),
+        "A confirmed same EXE with a different ID must not prompt for close"
+    );
+    finish(shared_alias.token, vec![]).unwrap();
+    let repeated = execute(LaunchAction::Program {
+        target: alias.to_str().unwrap().into(),
+        minimized: true,
+        skip_if_running: true,
+    })
+    .unwrap();
+    assert_eq!(
+        repeated.outcome,
+        LaunchOutcome::AlreadyRunning,
+        "Shared apps must not relaunch or minimize: {repeated:#?}"
+    );
     let keep = prepare(vec![target.clone()], vec![]).unwrap();
     assert_eq!(keep.candidates.len(), 1);
     // Cancel/keep-all sends no WM_CLOSE at all, and invalid selection cannot close anything.

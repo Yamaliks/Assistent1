@@ -1,6 +1,6 @@
 [package]
 name = "assistent1"
-version = "0.1.1"
+version = "0.1.2"
 description = "Local-first Windows assistant"
 authors = ["Assistent1"]
 edition = "2021"
@@ -11,6 +11,7 @@ name = "assistent1_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
+sha2 = "0.10"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
